@@ -1,0 +1,13 @@
+packages:
+  - contracts
+  - agent
+  - web
+  - shared
+
+onlyBuiltDependencies:
+  - keccak
+  - secp256k1
+allowBuilds:
+  esbuild: true
+  keccak: true
+  secp256k1: true

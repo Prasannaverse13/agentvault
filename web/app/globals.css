@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: #05070a;
+  color: #e8edf5;
+}
+
+body {
+  background-image:
+    radial-gradient(1100px 600px at 12% -10%, rgba(255, 45, 85, 0.14), transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, rgba(255, 138, 61, 0.09), transparent 55%),
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: auto, auto, 56px 56px, 56px 56px;
+  background-attachment: fixed;
+}
+
+::selection {
+  background: rgba(255, 45, 85, 0.35);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #253040 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #253040;
+  border-radius: 999px;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-line bg-panel/80 backdrop-blur;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line px-4 py-2.5 text-sm font-medium text-white/90 transition disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .btn:hover:not(:disabled) {
+    @apply border-white/25 bg-white/5;
+  }
+
+  .btn-primary {
+    @apply border-transparent bg-accent text-white shadow-glow;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    @apply border-transparent bg-[#ff4468];
+  }
+
+  .btn-ghost {
+    @apply border-transparent bg-white/5;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-line bg-ink/70 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-muted/60 focus:border-accent/60;
+  }
+
+  .label {
+    @apply mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-muted;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-white/5 px-2.5 py-1 text-[11px] font-medium text-muted;
+  }
+}
+
+.glass-line {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16), transparent);
+  height: 1px;
+}
+
+.glow-dot {
+  box-shadow: 0 0 0 4px rgba(61, 220, 151, 0.12), 0 0 18px rgba(61, 220, 151, 0.7);
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: #1b2431;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #ff2d55;
+  border: 3px solid #0a0e14;
+  box-shadow: 0 0 0 1px #ff2d55;
+  cursor: pointer;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #ff2d55;
+  border: 3px solid #0a0e14;
+  cursor: pointer;
+}

@@ -1,0 +1,16 @@
+node_modules/
+.pnpm-store/
+.env
+.env.local
+.env.*.local
+dist/
+.next/
+out/
+artifacts/
+cache/
+typechain-types/
+coverage/
+*.log
+.DS_Store
+data/*.json
+!data/.gitkeep

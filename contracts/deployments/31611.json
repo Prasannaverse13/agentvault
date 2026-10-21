@@ -1,0 +1,16 @@
+{
+  "chainId": 31611,
+  "network": "Mezo Testnet",
+  "factory": "0x0Eb2cD465946e7eac309bCF311Dbd2Dd5cc7C31d",
+  "demoVault": "0xAbb30839FE657D59b4CBCbB737f4af896c5a8b62",
+  "core": {
+    "MUSD": "0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503",
+    "BORROWER_OPERATIONS": "0xCdF7028ceAB81fA0C6971208e83fa7872994beE5",
+    "TROVE_MANAGER": "0xE47c80e8c23f6B4A1aE41c34837a0599D5D16bb0",
+    "PRICE_FEED": "0x86bCF0841622a5dAC14A313a15f96A95421b9366"
+  },
+  "deployer": "0x93b881Ce74c46EC3917a98cE1Bb64AaCDbE9A534",
+  "agent": "0xe01b65A9705A306f70080964617A3EBE2f63FC12",
+  "deployedAt": "2026-10-21",
+  "explorer": "https://explorer.test.mezo.org"
+}

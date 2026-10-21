@@ -1,0 +1,21 @@
+{
+  "name": "agentvault",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Autonomous BTC loan manager for Mezo",
+  "scripts": {
+    "build": "pnpm -r build",
+    "contracts:build": "pnpm --filter @agentvault/contracts build",
+    "contracts:test": "pnpm --filter @agentvault/contracts test",
+    "contracts:deploy": "pnpm --filter @agentvault/contracts deploy:testnet",
+    "agent:dev": "pnpm --filter @agentvault/agent dev",
+    "web:dev": "pnpm --filter @agentvault/web dev",
+    "web:build": "pnpm --filter @agentvault/web build",
+    "demo:setup": "pnpm --filter @agentvault/agent exec tsx scripts/setup-demo.ts",
+    "demo:stress": "pnpm --filter @agentvault/agent exec tsx scripts/stress-demo.ts",
+    "demo:fund": "pnpm --filter @agentvault/agent exec tsx scripts/fund-agent.ts",
+    "demo:transfer": "pnpm --filter @agentvault/agent exec tsx scripts/transfer.ts",
+    "typecheck": "pnpm --filter @agentvault/shared build && pnpm --filter @agentvault/agent build && pnpm --filter @agentvault/web build"
+  },
+  "packageManager": "pnpm@11.22.0"
+}
