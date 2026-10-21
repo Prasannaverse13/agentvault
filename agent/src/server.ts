@@ -166,7 +166,8 @@ export async function buildServer() {
           buffer: ONE / 5n,
           reserve: 5_000n * ONE,
           rules: {
-            triggerICR: 16_666_666_666_666_666n,
+            // 166.67% ICR (60% LTV). ICR is stored with 1e18 = 100%.
+            triggerICR: 1_666_666_666_666_666_666n,
             targetICR: 2n * ONE,
             autoProtect: true,
           },

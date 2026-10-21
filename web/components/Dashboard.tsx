@@ -34,6 +34,7 @@ type Props = {
   status: StatusResponse;
   wallet: Wallet;
   agentOnline: boolean;
+  liveSource?: "agent" | "onchain";
   onRefresh: () => void;
   onNewVault: () => void;
   notify: (message: string, kind?: "ok" | "err") => void;
@@ -49,6 +50,7 @@ export function Dashboard({
   status,
   wallet,
   agentOnline,
+  liveSource = "agent",
   onRefresh,
   onNewVault,
   notify,
@@ -90,6 +92,9 @@ export function Dashboard({
             />
             {agentOnline ? "Agent online" : "Agent offline"}
           </Badge>
+          {liveSource === "onchain" ? (
+            <Badge tone="accent">Live on-chain read</Badge>
+          ) : null}
           <Badge>
             Vault <span className="font-mono text-white">{shortAddr(vault)}</span>
           </Badge>

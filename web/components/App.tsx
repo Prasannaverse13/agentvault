@@ -11,6 +11,7 @@ import {
   type StatusResponse,
 } from "@/lib/api";
 import { useWallet } from "@/lib/useWallet";
+import { readVaultOnChain } from "@/lib/onchain";
 import { CreateVault } from "./CreateVault";
 import { Dashboard } from "./Dashboard";
 import { Header } from "./Header";
@@ -30,6 +31,7 @@ export default function App() {
   const [agent, setAgent] = useState<AgentHealth | null>(null);
   const [config, setConfig] = useState<AgentConfig | null>(null);
   const [agentOnline, setAgentOnline] = useState(false);
+  const [liveSource, setLiveSource] = useState<"agent" | "onchain">("agent");
   const [createOpen, setCreateOpen] = useState(false);
   const [wantApp, setWantApp] = useState(false);
   const [toast, setToast] = useState<{ message: string; kind: "ok" | "err" } | null>(null);
@@ -65,8 +67,19 @@ export default function App() {
       const next = await api.status(vault);
       setStatus(next);
       setStatusError(null);
+      setLiveSource("agent");
     } catch (error) {
-      setStatusError(error instanceof Error ? error.message : "Could not reach the agent");
+      // The agent service is unreachable: fall back to reading the vault
+      // directly from the chain so the dashboard still tells the truth.
+      try {
+        const next = await readVaultOnChain(vault);
+        setStatus(next);
+        setStatusError(null);
+        setLiveSource("onchain");
+      } catch {
+        setStatusError(error instanceof Error ? error.message : "Could not reach the agent");
+        setLiveSource("agent");
+      }
     }
   }, [vault]);
 
@@ -175,6 +188,7 @@ export default function App() {
           status={status}
           wallet={wallet}
           agentOnline={agentOnline}
+          liveSource={liveSource}
           onRefresh={() => void refreshStatus()}
           onNewVault={openCreate}
           notify={notify}
