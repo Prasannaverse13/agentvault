@@ -101,7 +101,7 @@ in the wallet. Chat can also trigger a stress simulation.
 ## Crash simulation — what is real and what is modelled
 
 The Mezo oracle is not ours to move, so a genuine "BTC crashes 30% right now" event cannot be
-produced on testnet. The simulator therefore models the **Mezo mechanics faithfully** (linear
+produced on testnet (on the demo network it can, see above). The simulator therefore models the **Mezo mechanics faithfully** (linear
 price path, ICR math, the exact same `decide()` function the live agent uses, the same 110%
 liquidation threshold, the same buffer/reserve caps) and compares two paths:
 
@@ -114,6 +114,58 @@ oracle price and your real safety funds.
 
 The **live** path is proven on-chain: the agent executes real `protect()` transactions against
 the real vault, and the dashboard links the transaction hash on the Mezo explorer.
+
+---
+
+## Demo network: the whole product, for real, with no faucet
+
+Mezo testnet BTC is scarce and the real oracle cannot be moved, so a full recording needs a
+network we control. `pnpm demo` starts one: a local chain with mock Mezo contracts, the real
+`AgentVaultFactory`, the agent, and the web app. Every action is a genuine on-chain transaction
+signed by your MetaMask; only the funds are free.
+
+```bash
+pnpm install
+pnpm demo
+```
+
+Then open http://localhost:3000 and:
+
+1. **Connect MetaMask.** The app adds the "AgentVault Demo Network" (chain id 31337) and sends your
+   wallet 100 free demo BTC automatically.
+2. **Create a vault, open a loan, fund a BTC buffer and a MUSD reserve.** The setup checklist on
+   the dashboard walks you through it.
+3. **Crash the market** with the *Market control* card (−10% / −25% / −40%). The agent notices
+   within seconds, sends a real `protect()` transaction, and a toast tells you what it did.
+4. Watch the **Health history** chart, the **Risk insight** card and the **Agent activity** feed
+   update. Reset the price and repeat, or try *Withdraw* and *Close loan*.
+
+Check that everything works against the running demo (signs real transactions, asserts the agent
+defends a crashed loan, then withdraws and closes it):
+
+```bash
+pnpm --filter @agentvault/agent e2e:local
+```
+
+If MetaMask reports nonce errors after you restart the demo chain: *Settings → Advanced → Clear
+activity tab data*. The demo uses its own `data-demo/` folder and never touches testnet data.
+
+### What the dashboard does
+
+| Area | What it gives you |
+| --- | --- |
+| Setup checklist | Loan, BTC buffer, MUSD reserve, armed agent, derived from the live position |
+| Position + agent decision | Live ICR gauge, collateral, debt, liquidation price, what the agent will do next |
+| Risk insight | Score, BTC drop to the trigger, to liquidation, and the drop the agent can defend |
+| Health history | ICR over time with every agent action marked, recorded by the agent |
+| Simulator | Replay a crash against your own position, agent vs no agent |
+| Rules | Trigger and restore-to LTV, auto-protect switch, signed by the owner |
+| Actions | Buffer, reserve, borrow, repay, and withdraw (buffer, reserve, collateral) |
+| Close loan | Repays from the reserve (tops it up if short) and returns your BTC |
+| Agent chat | Natural-language rule changes the owner still signs |
+| Activity | Filter by actions / alerts, export CSV |
+| Alerts | In-app toasts, plus Telegram with a test button |
+| Multi-vault | Switch between your vaults, open new ones |
 
 ---
 

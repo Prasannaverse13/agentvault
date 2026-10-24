@@ -11,12 +11,18 @@ import {
   type Address,
   type Hash,
 } from "viem";
-import { publicClient, EXPLORER, FAUCET } from "@/lib/chain";
-import type { ChatResponse, PositionView, StatusResponse } from "@/lib/api";
+import { publicClient, addressUrl, txUrl, FAUCET, IS_DEMO } from "@/lib/chain";
+import type { AgentHealth, ChatResponse, PositionView, StatusResponse } from "@/lib/api";
 import { api } from "@/lib/api";
 import { cls, fmtNum, fmtPct, fmtUsd, shortAddr, timeAgo } from "@/lib/format";
-import type { useWallet } from "@/lib/useWallet";
+import { walletErrorMessage, type useWallet } from "@/lib/useWallet";
 import { Simulator } from "./Simulator";
+import { Checklist } from "./Checklist";
+import { CloseLoanModal } from "./CloseLoanModal";
+import { HistoryChart } from "./HistoryChart";
+import { MarketCard } from "./MarketCard";
+import { NotificationsCard } from "./NotificationsCard";
+import { RiskCard } from "./RiskCard";
 import {
   Badge,
   Card,
@@ -35,8 +41,12 @@ type Props = {
   wallet: Wallet;
   agentOnline: boolean;
   liveSource?: "agent" | "onchain";
+  agent: AgentHealth | null;
+  vaults: Address[];
+  onSelectVault: (vault: Address) => void;
   onRefresh: () => void;
   onNewVault: () => void;
+  onOpenLoan: () => void;
   notify: (message: string, kind?: "ok" | "err") => void;
 };
 
@@ -51,30 +61,45 @@ export function Dashboard({
   wallet,
   agentOnline,
   liveSource = "agent",
+  agent,
+  vaults,
+  onSelectVault,
   onRefresh,
   onNewVault,
+  onOpenLoan,
   notify,
 }: Props) {
   const position = status.position;
   const isOwner = wallet.address?.toLowerCase() === position.owner.toLowerCase();
   const [simRequest, setSimRequest] = useState<{ id: number; scenario: string } | null>(null);
+  const [closeOpen, setCloseOpen] = useState(false);
 
   const runTx = async (label: string, fn: (client: ConnectedClient) => Promise<Hash>) => {
-    const client = wallet.getClient();
-    if (!client) {
+    if (!wallet.address) {
       notify("Connect your wallet first", "err");
-      return;
+      return false;
     }
     try {
+      const client = await wallet.requireClient();
+      if (!client) {
+        notify("Connect your wallet first", "err");
+        return false;
+      }
       notify("Confirm the transaction in your wallet…");
       const hash = await fn(client);
       await publicClient.waitForTransactionReceipt({ hash });
       notify(label);
       onRefresh();
       setTimeout(onRefresh, 4000);
+      return true;
     } catch (error) {
-      notify(errorText(error), "err");
+      notify(walletErrorMessage(error), "err");
+      return false;
     }
+  };
+
+  const focusSection = (section: "actions" | "rules" | "alerts") => {
+    document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   const triggerSimulation = (scenario: string) => {
@@ -100,25 +125,48 @@ export function Dashboard({
             Vault <span className="font-mono text-obsidian">{shortAddr(vault)}</span>
           </Badge>
           {isOwner ? <Badge tone="accent">Owner wallet</Badge> : <Badge tone="warn">Read only</Badge>}
-          <a
-            className="badge transition hover:bg-mist"
-            href={`${EXPLORER}/address/${vault}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Explorer ↗
-          </a>
+          {addressUrl(vault) ? (
+            <a
+              className="badge transition hover:bg-mist"
+              href={addressUrl(vault) as string}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Explorer ↗
+            </a>
+          ) : null}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {vaults.length > 1 ? (
+            <select
+              aria-label="Switch vault"
+              className="rounded-full bg-fog px-4 py-2 text-[14px] font-semibold text-forest outline-none transition hover:bg-[#dde1da]"
+              value={vaults.find((v) => v.toLowerCase() === vault.toLowerCase()) ?? ""}
+              onChange={(event) => onSelectVault(event.target.value as Address)}
+            >
+              {vaults.map((v, index) => (
+                <option key={v} value={v}>
+                  Vault {index + 1} · {shortAddr(v)}
+                </option>
+              ))}
+            </select>
+          ) : null}
           <button className="link text-[15px]" onClick={onRefresh}>
             Refresh
           </button>
         </div>
       </div>
 
+      <Checklist
+        position={position}
+        isOwner={isOwner}
+        onOpenLoan={onOpenLoan}
+        onFocus={focusSection}
+      />
+
       <div className="grid gap-5 lg:grid-cols-12">
         <div className="lg:col-span-7">
-          <PositionCard position={position} />
+          <PositionCard position={position} isOwner={isOwner} onOpenLoan={onOpenLoan} />
         </div>
         <div className="lg:col-span-5">
           <AgentCard
@@ -131,11 +179,19 @@ export function Dashboard({
           />
         </div>
 
+        <div className="lg:col-span-5">
+          <RiskCard vault={vault} position={position} />
+        </div>
+        <div className="lg:col-span-7">
+          <HistoryChart vault={vault} position={position} events={status.events} />
+        </div>
+
         <div className="lg:col-span-7">
           <Simulator mode="live" vault={vault} position={position} request={simRequest} />
         </div>
 
         <div className="space-y-5 lg:col-span-5">
+          {IS_DEMO ? <MarketCard onRefresh={onRefresh} notify={notify} /> : null}
           <RulesCard
             vault={vault}
             position={position}
@@ -147,6 +203,7 @@ export function Dashboard({
             vault={vault}
             position={position}
             isOwner={isOwner}
+            owner={wallet.address}
             runTx={runTx}
             notify={notify}
           />
@@ -164,7 +221,30 @@ export function Dashboard({
         <div className="lg:col-span-5">
           <ActivityCard events={status.events} onRefresh={onRefresh} />
         </div>
+
+        <div className="lg:col-span-5">
+          <NotificationsCard agent={agent} agentOnline={agentOnline} notify={notify} />
+        </div>
+        <div className="lg:col-span-7">
+          <VaultDetails
+            vault={vault}
+            position={position}
+            isOwner={isOwner}
+            onClose={() => setCloseOpen(true)}
+            onOpenLoan={onOpenLoan}
+            notify={notify}
+          />
+        </div>
       </div>
+
+      <CloseLoanModal
+        open={closeOpen}
+        onClose={() => setCloseOpen(false)}
+        vault={vault}
+        owner={wallet.address}
+        position={position}
+        runTx={runTx}
+      />
     </main>
   );
 }
@@ -173,11 +253,54 @@ function healthTone(health: PositionView["health"]): "good" | "warn" | "danger" 
   return health === "safe" ? "good" : health === "watch" ? "warn" : "danger";
 }
 
-function PositionCard({ position }: { position: PositionView }) {
+const TROVE_STATUS: Record<number, string> = {
+  0: "No loan yet",
+  2: "Loan closed",
+  3: "Liquidated",
+  4: "Redeemed",
+};
+
+function PositionCard({
+  position,
+  isOwner,
+  onOpenLoan,
+}: {
+  position: PositionView;
+  isOwner: boolean;
+  onOpenLoan: () => void;
+}) {
   const pct = Math.max(0, Math.min(1, (position.icr - 110) / (300 - 110)));
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const distance = position.price > 0 ? ((position.price - position.liquidationPrice) / position.price) * 100 : 0;
+
+  if (position.status !== 1) {
+    return (
+      <Card className="flex h-full flex-col">
+        <SectionTitle
+          title="Your position"
+          subtitle="This vault has no active loan, so the agent has nothing to protect."
+          action={<Badge>{TROVE_STATUS[position.status] ?? "No loan"}</Badge>}
+        />
+        <div className="flex flex-1 flex-col items-start justify-center gap-4 rounded-panel bg-fog/60 p-6">
+          <p className="text-[18px] font-bold text-obsidian">
+            {position.status === 2 ? "You closed this loan and took your BTC back." : "Open a loan to start protecting it."}
+          </p>
+          <p className="max-w-md text-[14px] leading-relaxed text-slate">
+            Deposit BTC as collateral and borrow MUSD. The agent then watches the collateral ratio and
+            defends it with the safety funds you set aside.
+          </p>
+          {isOwner ? (
+            <button className="btn btn-primary px-6 py-3" onClick={onOpenLoan}>
+              Open a loan
+            </button>
+          ) : (
+            <p className="text-[13px] font-medium text-slate">Connect the owner wallet to open a loan.</p>
+          )}
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="h-full">
@@ -348,14 +471,7 @@ function AgentCard({
           {lastExecution.txHash ? (
             <>
               {" · "}
-              <a
-                className="text-good underline decoration-dotted"
-                href={`${EXPLORER}/tx/${lastExecution.txHash}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                tx
-              </a>
+              <TxLink hash={lastExecution.txHash} label="tx" />
             </>
           ) : null}
         </p>
@@ -383,7 +499,7 @@ function RulesCard({
   vault: Address;
   position: PositionView;
   isOwner: boolean;
-  runTx: (label: string, fn: (client: ConnectedClient) => Promise<Hash>) => Promise<void>;
+  runTx: (label: string, fn: (client: ConnectedClient) => Promise<Hash>) => Promise<boolean>;
   notify: (message: string, kind?: "ok" | "err") => void;
 }) {
   const [triggerLTV, setTriggerLTV] = useState(Math.round(position.triggerLTV));
@@ -493,23 +609,38 @@ function RulesCard({
   );
 }
 
-type ActionTab = "buffer" | "reserve" | "borrow" | "repay";
+type ActionTab = "buffer" | "reserve" | "borrow" | "repay" | "withdraw";
 
 function SafetyCard({
   vault,
   position,
   isOwner,
+  owner,
   runTx,
   notify,
 }: {
   vault: Address;
   position: PositionView;
   isOwner: boolean;
-  runTx: (label: string, fn: (client: ConnectedClient) => Promise<Hash>) => Promise<void>;
+  owner: Address | undefined;
+  runTx: (label: string, fn: (client: ConnectedClient) => Promise<Hash>) => Promise<boolean>;
   notify: (message: string, kind?: "ok" | "err") => void;
 }) {
   const [tab, setTab] = useState<ActionTab>("buffer");
   const [amount, setAmount] = useState("0.05");
+  const [wKind, setWKind] = useState<"buffer" | "reserve" | "collateral">("buffer");
+
+  // Collateral may only come out while the loan stays safely above the trigger.
+  const collateralMax =
+    position.status === 1 && position.price > 0
+      ? Math.max(
+          0,
+          position.coll - ((Math.max(position.triggerICR, 150) / 100) * position.debt) / position.price,
+        )
+      : 0;
+  const withdrawMax =
+    wKind === "buffer" ? position.btcBuffer : wKind === "reserve" ? position.musdReserve : collateralMax;
+  const floor6 = (value: number) => Math.floor(value * 1e6) / 1e6;
 
   useEffect(() => {
     const defaults: Record<ActionTab, string> = {
@@ -517,9 +648,15 @@ function SafetyCard({
       reserve: "1000",
       borrow: "1000",
       repay: "500",
+      withdraw: "0",
     };
     setAmount(defaults[tab]);
   }, [tab]);
+
+  useEffect(() => {
+    if (tab === "withdraw") setAmount(String(floor6(withdrawMax)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, wKind]);
 
   const execute = () => {
     const value = Number(amount);
@@ -559,6 +696,35 @@ function SafetyCard({
           args: [parseEther(amount)],
         }),
       );
+    }
+    if (tab === "withdraw") {
+      if (!owner) {
+        notify("Connect your wallet first", "err");
+        return;
+      }
+      if (value > withdrawMax + 1e-9) {
+        notify(
+          wKind === "collateral"
+            ? `You can withdraw at most ${fmtNum(collateralMax, 4)} BTC and still stay above your trigger`
+            : `Only ${fmtNum(withdrawMax, 4)} is available`,
+          "err",
+        );
+        return;
+      }
+      const parsed = parseEther(amount);
+      if (wKind === "buffer") {
+        void runTx(`Withdrew ${amount} BTC from the buffer`, (client) =>
+          client.writeContract({ address: vault, abi: vaultAbi, functionName: "sweepBTC", args: [owner, parsed] }),
+        );
+      } else if (wKind === "reserve") {
+        void runTx(`Withdrew ${amount} MUSD from the reserve`, (client) =>
+          client.writeContract({ address: vault, abi: vaultAbi, functionName: "sweepMUSD", args: [owner, parsed] }),
+        );
+      } else {
+        void runTx(`Withdrew ${amount} BTC of collateral`, (client) =>
+          client.writeContract({ address: vault, abi: vaultAbi, functionName: "withdrawCollateral", args: [parsed] }),
+        );
+      }
     }
     if (tab === "repay") {
       const parsed = parseEther(amount);
@@ -601,10 +767,20 @@ function SafetyCard({
       hint: "Pulls MUSD from your wallet and burns it against the loan.",
       cta: "Repay",
     },
+    withdraw: {
+      title: "Withdraw",
+      hint:
+        wKind === "buffer"
+          ? "Take unused BTC back out of the safety buffer."
+          : wKind === "reserve"
+            ? "Take unused MUSD back out of the reserve."
+            : `Take collateral out of the loan. Up to ${fmtNum(collateralMax, 4)} BTC while staying above your trigger.`,
+      cta: "Withdraw",
+    },
   };
 
   return (
-    <Card>
+    <Card id="actions">
       <SectionTitle
         title="Actions"
         subtitle="Keep a buffer ready so the agent never has to wait for you."
@@ -621,13 +797,14 @@ function SafetyCard({
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-4 gap-1 rounded-full bg-fog p-1">
+      <div className="mt-4 grid grid-cols-5 gap-1 rounded-full bg-fog p-1">
         {(
           [
             ["buffer", "Buffer"],
             ["reserve", "Reserve"],
             ["borrow", "Borrow"],
             ["repay", "Repay"],
+            ["withdraw", "Withdraw"],
           ] as [ActionTab, string][]
         ).map(([id, label]) => (
           <button
@@ -643,6 +820,29 @@ function SafetyCard({
         ))}
       </div>
 
+      {tab === "withdraw" ? (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {(
+            [
+              ["buffer", "BTC buffer"],
+              ["reserve", "MUSD reserve"],
+              ["collateral", "Collateral"],
+            ] as ["buffer" | "reserve" | "collateral", string][]
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setWKind(id)}
+              className={cls(
+                "rounded-full px-3 py-1.5 text-[13px] font-semibold transition",
+                wKind === id ? "bg-forest text-lime" : "bg-mist text-forest hover:bg-lime",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       <p className="mt-3 text-[13px] text-slate">{copy[tab].hint}</p>
 
       <div className="mt-2 flex gap-2">
@@ -651,9 +851,20 @@ function SafetyCard({
           value={amount}
           onChange={(event) => setAmount(event.target.value)}
           inputMode="decimal"
-          placeholder={tab === "buffer" ? "BTC amount" : "MUSD amount"}
+          placeholder={
+            tab === "buffer" || (tab === "withdraw" && wKind !== "reserve") ? "BTC amount" : "MUSD amount"
+          }
           disabled={!isOwner}
         />
+        {tab === "withdraw" ? (
+          <button
+            className="btn btn-ghost shrink-0 px-4 text-[13px]"
+            onClick={() => setAmount(String(floor6(withdrawMax)))}
+            disabled={!isOwner}
+          >
+            Max
+          </button>
+        ) : null}
         <button className="btn btn-primary shrink-0 text-[13px]" onClick={execute} disabled={!isOwner}>
           {copy[tab].cta}
         </button>
@@ -661,10 +872,17 @@ function SafetyCard({
 
       {!isOwner ? (
         <p className="mt-2 text-[14px] text-slate">
-          Connect the owner wallet to move funds. Need testnet BTC?{" "}
-          <a className="link" href={FAUCET} target="_blank" rel="noreferrer">
-            Faucet ↗
-          </a>
+          Connect the owner wallet to move funds.{" "}
+          {IS_DEMO ? (
+            "Need BTC? Use Get 100 demo BTC in the wallet menu."
+          ) : (
+            <>
+              Need testnet BTC?{" "}
+              <a className="link" href={FAUCET} target="_blank" rel="noreferrer">
+                Faucet ↗
+              </a>
+            </>
+          )}
         </p>
       ) : null}
     </Card>
@@ -686,7 +904,7 @@ function ChatCard({
 }: {
   vault: Address;
   isOwner: boolean;
-  runTx: (label: string, fn: (client: ConnectedClient) => Promise<Hash>) => Promise<void>;
+  runTx: (label: string, fn: (client: ConnectedClient) => Promise<Hash>) => Promise<boolean>;
   onSimulate: (scenario: string) => void;
   notify: (message: string, kind?: "ok" | "err") => void;
 }) {
@@ -833,6 +1051,34 @@ function ActivityCard({
   events: StatusResponse["events"];
   onRefresh: () => void;
 }) {
+  const [filter, setFilter] = useState<"all" | "actions" | "alerts" | "other">("all");
+  const shown = events.filter((event) =>
+    filter === "all"
+      ? true
+      : filter === "actions"
+        ? event.type === "execution"
+        : filter === "alerts"
+          ? event.type === "alert"
+          : event.type !== "execution" && event.type !== "alert",
+  );
+
+  const exportCsv = () => {
+    const esc = (value: string | undefined) => `"${(value ?? "").replace(/"/g, '""')}"`;
+    const rows = [
+      "time,type,title,detail,tx",
+      ...events.map((e) =>
+        [new Date(e.at).toISOString(), e.type, esc(e.title), esc(e.detail), e.txHash ?? ""].join(","),
+      ),
+    ];
+    const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "agentvault-activity.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const icon: Record<string, string> = {
     execution: "🛡",
     alert: "⚠",
@@ -848,18 +1094,41 @@ function ActivityCard({
         title="Agent activity"
         subtitle="Every decision and on-chain action is logged."
         action={
-          <button className="text-[14px] text-slate transition hover:text-obsidian" onClick={onRefresh}>
-            Refresh
-          </button>
+          <div className="flex items-center gap-3">
+            <button className="link whitespace-nowrap text-[14px]" onClick={exportCsv} disabled={events.length === 0}>
+              Export CSV
+            </button>
+            <button className="link text-[14px]" onClick={onRefresh}>
+              Refresh
+            </button>
+          </div>
         }
       />
+      <div className="segmented mb-3 self-start">
+        {(
+          [
+            ["all", "All"],
+            ["actions", "Agent actions"],
+            ["alerts", "Alerts"],
+            ["other", "Other"],
+          ] as ["all" | "actions" | "alerts" | "other", string][]
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setFilter(id)}
+            className={cls("segment px-3", filter === id && "segment-active")}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       <div className="flex-1 space-y-2 overflow-y-auto pr-1">
-        {events.length === 0 ? (
+        {shown.length === 0 ? (
           <p className="rounded-card bg-fog/60 px-3 py-6 text-center text-[13px] text-slate">
-            No activity yet. Run an agent check or a simulation.
+            {events.length === 0 ? "No activity yet. Run an agent check or a simulation." : "Nothing in this filter yet."}
           </p>
         ) : null}
-        {events.map((event) => (
+        {shown.map((event) => (
           <div key={event.id} className="rounded-panel bg-fog/60 px-3 py-2.5">
             <div className="flex items-start gap-2">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-paper text-[14px] shadow-subtle">{icon[event.type] ?? "•"}</span>
@@ -873,20 +1142,128 @@ function ActivityCard({
                 <div className="mt-1 flex items-center gap-2 text-[14px] text-slate">
                   <span>{timeAgo(event.at)}</span>
                   {event.txHash ? (
-                    <a
-                      className="text-good underline decoration-dotted"
-                      href={`${EXPLORER}/tx/${event.txHash}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {event.txHash.slice(0, 8)}…
-                    </a>
+                    <TxLink hash={event.txHash} label={`${event.txHash.slice(0, 8)}…`} />
                   ) : null}
                 </div>
               </div>
             </div>
           </div>
         ))}
+      </div>
+    </Card>
+  );
+}
+
+function TxLink({ hash, label }: { hash: string; label: string }) {
+  const url = txUrl(hash);
+  return url ? (
+    <a className="text-good underline decoration-dotted" href={url} target="_blank" rel="noreferrer">
+      {label}
+    </a>
+  ) : (
+    <span className="font-mono text-good" title={hash}>
+      {label}
+    </span>
+  );
+}
+
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      className="text-[13px] font-semibold text-forest underline decoration-2 underline-offset-4 hover:decoration-lime"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(value);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        } catch {
+          // clipboard blocked
+        }
+      }}
+    >
+      {copied ? "Copied ✓" : "Copy"}
+    </button>
+  );
+}
+
+function VaultDetails({
+  vault,
+  position,
+  isOwner,
+  onClose,
+  onOpenLoan,
+  notify,
+}: {
+  vault: Address;
+  position: PositionView;
+  isOwner: boolean;
+  onClose: () => void;
+  onOpenLoan: () => void;
+  notify: (message: string, kind?: "ok" | "err") => void;
+}) {
+  const rows: [string, string][] = [
+    ["Vault", vault],
+    ["Owner", position.owner],
+    ["Guardian agent", position.agent],
+  ];
+  return (
+    <Card>
+      <SectionTitle
+        title="Vault details"
+        subtitle="Everything lives in your own contract. Only you can move funds out."
+        action={
+          <Badge tone={position.status === 1 ? "good" : "default"}>
+            {position.status === 1 ? "Loan active" : (TROVE_STATUS[position.status] ?? "No loan")}
+          </Badge>
+        }
+      />
+
+      <div className="divide-y divide-line rounded-panel bg-fog/60">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+            <span className="text-[14px] font-medium text-slate">{label}</span>
+            <span className="flex items-center gap-3">
+              <span className="font-mono text-[13px] font-semibold text-forest">{shortAddr(value)}</span>
+              <CopyButton value={value} />
+              {addressUrl(value) ? (
+                <a className="link text-[13px]" href={addressUrl(value) as string} target="_blank" rel="noreferrer">
+                  Explorer ↗
+                </a>
+              ) : null}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 rounded-panel border border-[#f3c4c6] bg-[#fdf3f3] p-4">
+        <p className="text-[15px] font-bold text-danger">Danger zone</p>
+        {position.status === 1 ? (
+          <>
+            <p className="mt-1 text-[13px] leading-relaxed text-charcoal">
+              Close the loan to repay all debt from your MUSD reserve and take your collateral and buffer
+              back. The agent stops protecting this vault.
+            </p>
+            <button
+              className="btn mt-3 border-danger text-danger hover:!bg-[#fbe4e5]"
+              onClick={() => (isOwner ? onClose() : notify("Connect the owner wallet to close the loan", "err"))}
+            >
+              Close loan
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="mt-1 text-[13px] leading-relaxed text-charcoal">
+              There is no active loan on this vault. Open a new one whenever you are ready.
+            </p>
+            <button
+              className="btn btn-primary mt-3"
+              onClick={() => (isOwner ? onOpenLoan() : notify("Connect the owner wallet to open a loan", "err"))}
+            >
+              Open a loan
+            </button>
+          </>
+        )}
       </div>
     </Card>
   );

@@ -10,6 +10,10 @@ import { runCheck, registerVault } from "./monitor.js";
 import { handleChat } from "./chat.js";
 import { store } from "./store.js";
 import { watchlist } from "./watchlist.js";
+import { history } from "./history.js";
+import { assessRisk } from "./risk.js";
+import { notify } from "./telegram.js";
+import { demoEnabled, fundWallet, marketState, resetMarketPrice, setMarketPrice } from "./demo.js";
 
 function isAddress(value: string): value is Address {
   return /^0x[0-9a-fA-F]{40}$/.test(value);
@@ -27,7 +31,10 @@ export async function buildServer() {
     execute: config.execute,
     vaults: watchlist.list(),
     telegram: Boolean(config.telegramToken),
+    telegramChat: Boolean(config.telegramToken && config.telegramChatId),
     llm: Boolean(config.openaiKey),
+    demo: demoEnabled,
+    pollMs: config.pollMs,
   }));
 
   app.get("/api/watch", async () => ({ vaults: watchlist.list() }));
@@ -60,6 +67,7 @@ export async function buildServer() {
     factory: config.factoryAddress ?? null,
     agent: agentAccount?.address ?? null,
     execute: config.execute,
+    demo: demoEnabled,
   }));
 
   app.get<{ Params: { vault: string } }>("/api/status/:vault", async (request, reply) => {
@@ -98,6 +106,102 @@ export async function buildServer() {
     async (request) => ({
       events: store.list(request.params.vault, Number(request.query.limit ?? 50)),
     }),
+  );
+
+  app.get<{ Params: { vault: string }; Querystring: { limit?: string } }>(
+    "/api/history/:vault",
+    async (request, reply) => {
+      const { vault } = request.params;
+      if (!isAddress(vault)) return reply.code(400).send({ error: "Invalid vault address" });
+      return { points: history.list(vault, Number(request.query.limit ?? 240)) };
+    },
+  );
+
+  app.get<{ Params: { vault: string } }>("/api/risk/:vault", async (request, reply) => {
+    const { vault } = request.params;
+    if (!isAddress(vault)) return reply.code(400).send({ error: "Invalid vault address" });
+    try {
+      const s = await readVault(vault);
+      return assessRisk({
+        coll: s.coll,
+        debt: s.debt,
+        price: s.price,
+        buffer: s.btcBuffer,
+        reserve: s.musdReserve,
+        rules: { triggerICR: s.triggerICR, targetICR: s.targetICR, autoProtect: s.autoProtect },
+      });
+    } catch (error) {
+      return reply.code(502).send({
+        error: error instanceof Error ? error.message : "Could not assess risk",
+      });
+    }
+  });
+
+  app.post("/api/notify/test", async () => {
+    const configured = Boolean(config.telegramToken && config.telegramChatId);
+    const sent = configured
+      ? await notify("AgentVault test alert: Telegram notifications are working.")
+      : false;
+    return { configured, sent };
+  });
+
+  // ---- Local demo network only: free funds and a movable BTC price. ----
+
+  app.get("/api/demo/market", async (_request, reply) => {
+    if (!demoEnabled) return reply.code(404).send({ error: "Not available on this network" });
+    return marketState();
+  });
+
+  app.post<{ Body: { price?: number; changePct?: number; reset?: boolean } }>(
+    "/api/demo/price",
+    async (request, reply) => {
+      if (!demoEnabled) return reply.code(404).send({ error: "Not available on this network" });
+      const { price, changePct, reset } = request.body ?? {};
+      try {
+        let market;
+        if (reset) {
+          market = await resetMarketPrice();
+        } else if (typeof price === "number") {
+          market = await setMarketPrice(price);
+        } else if (typeof changePct === "number") {
+          const current = await marketState();
+          market = await setMarketPrice(current.price * (1 + changePct / 100));
+        } else {
+          return reply.code(400).send({ error: "Provide price, changePct or reset" });
+        }
+        store.add({
+          vault: watchlist.list()[0] ?? "system",
+          type: "decision",
+          title: `Market price set to $${Math.round(market.price).toLocaleString("en-US")}`,
+          detail: "Demo network: BTC oracle moved to test the agent",
+        });
+        // React immediately instead of waiting for the next poll.
+        void Promise.all(watchlist.list().map((v) => runCheck(v).catch(() => undefined)));
+        return market;
+      } catch (error) {
+        return reply.code(502).send({
+          error: error instanceof Error ? error.message : "Could not move the price",
+        });
+      }
+    },
+  );
+
+  app.post<{ Body: { address?: string; amount?: number } }>(
+    "/api/demo/faucet",
+    async (request, reply) => {
+      if (!demoEnabled) return reply.code(404).send({ error: "Not available on this network" });
+      const { address, amount } = request.body ?? {};
+      if (!address || !isAddress(address)) {
+        return reply.code(400).send({ error: "Invalid address" });
+      }
+      try {
+        return await fundWallet(address, Math.min(Number(amount) || 100, 1000));
+      } catch (error) {
+        return reply.code(502).send({
+          error: error instanceof Error ? error.message : "Faucet failed",
+        });
+      }
+    },
   );
 
   app.post<{

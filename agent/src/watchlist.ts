@@ -3,7 +3,7 @@ import path from "node:path";
 import type { Address } from "viem";
 import { config } from "./config.js";
 
-const file = path.resolve(process.cwd(), "../data/vaults.json");
+const file = path.join(config.dataDir, "vaults.json");
 
 class Watchlist {
   private vaults = new Set<string>();

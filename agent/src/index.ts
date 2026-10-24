@@ -4,6 +4,7 @@ import { startTelegram, notify } from "./telegram.js";
 import { runCheck } from "./monitor.js";
 import { store } from "./store.js";
 import { watchlist } from "./watchlist.js";
+import { history } from "./history.js";
 
 async function main() {
   const app = await buildServer();
@@ -25,6 +26,16 @@ async function main() {
     for (const vault of watchlist.list()) {
       try {
         const result = await runCheck(vault);
+        const v = result.vault;
+        if (v.debt > 0n) history.record(vault, {
+          t: Date.now(),
+          price: Number(v.price) / 1e18,
+          icr: Number(v.icr) / 1e16,
+          coll: Number(v.coll) / 1e18,
+          debt: Number(v.debt) / 1e18,
+          buffer: Number(v.btcBuffer) / 1e18,
+          reserve: Number(v.musdReserve) / 1e18,
+        });
         if (result.executed) {
           console.log(`Protected ${vault}: ${result.txHash}`);
         }

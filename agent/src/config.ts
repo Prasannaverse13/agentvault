@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import path from "node:path";
-import { CORE, MEZO_TESTNET } from "@agentvault/shared";
+import { CORE, IS_LOCAL, LOCAL_FACTORY, MEZO_TESTNET } from "@agentvault/shared";
 
 dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
 dotenv.config();
@@ -29,9 +29,15 @@ export const config = {
   rpcUrl: process.env.MEZO_TESTNET_RPC || MEZO_TESTNET.rpc,
   chain: MEZO_TESTNET,
   core: CORE,
+  local: IS_LOCAL,
+  dataDir: path.resolve(process.cwd(), process.env.DATA_DIR || "../data"),
+  /** Local demo network only: key that moves the mock oracle. */
+  demoAdminKey: (process.env.DEMO_ADMIN_KEY || "").trim() || undefined,
   factoryAddress: process.env.FACTORY_ADDRESS
     ? normalizeAddress(process.env.FACTORY_ADDRESS)
-    : undefined,
+    : IS_LOCAL
+      ? LOCAL_FACTORY
+      : undefined,
   vaults: vaults.map(normalizeAddress),
   demoVault: process.env.DEMO_VAULT ? normalizeAddress(process.env.DEMO_VAULT) : undefined,
   privateKey: privateKey || undefined,

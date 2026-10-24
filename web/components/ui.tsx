@@ -23,16 +23,22 @@ export function SectionTitle({
   title,
   action,
   subtitle,
+  inverted,
 }: {
   title: string;
   subtitle?: string;
   action?: ReactNode;
+  inverted?: boolean;
 }) {
   return (
     <div className="mb-5 flex items-start justify-between gap-3">
       <div>
-        <h2 className="heading text-[22px]">{title}</h2>
-        {subtitle ? <p className="mt-1 text-[14px] leading-relaxed text-slate">{subtitle}</p> : null}
+        <h2 className={cls("heading text-[22px]", inverted && "!text-paper")}>{title}</h2>
+        {subtitle ? (
+          <p className={cls("mt-1 text-[14px] leading-relaxed", inverted ? "text-paper/70" : "text-slate")}>
+            {subtitle}
+          </p>
+        ) : null}
       </div>
       {action}
     </div>

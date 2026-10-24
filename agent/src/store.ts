@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { config } from "./config.js";
 
 export type AgentEvent = {
   id: string;
@@ -14,7 +15,7 @@ export type AgentEvent = {
   data?: Record<string, unknown>;
 };
 
-const file = path.resolve(process.cwd(), "../data/events.json");
+const file = path.join(config.dataDir, "events.json");
 
 class EventStore {
   private events: AgentEvent[] = [];

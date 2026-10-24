@@ -101,6 +101,16 @@ export const vaultAbi = [
     ],
     outputs: [],
   },
+  {
+    type: "function",
+    name: "sweepBTC",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [],
+  },
   { type: "event", name: "LoanOpened", inputs: [{ name: "owner", type: "address", indexed: true }, { name: "coll", type: "uint256" }, { name: "debt", type: "uint256" }] },
   { type: "event", name: "RulesUpdated", inputs: [{ name: "triggerICR", type: "uint256" }, { name: "targetICR", type: "uint256" }, { name: "autoProtect", type: "bool" }] },
   { type: "event", name: "AgentAction", inputs: [{ name: "kind", type: "uint8", indexed: true }, { name: "repayAmount", type: "uint256" }, { name: "topUpAmount", type: "uint256" }, { name: "price", type: "uint256" }, { name: "icrBefore", type: "uint256" }, { name: "icrAfter", type: "uint256" }] },
@@ -154,4 +164,10 @@ export const troveManagerAbi = [
 export const borrowerOpsAbi = [
   { type: "function", name: "minNetDebt", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
   { type: "function", name: "getBorrowingFee", stateMutability: "view", inputs: [{ name: "_debt", type: "uint256" }], outputs: [{ type: "uint256" }] },
+] as const;
+
+/** Only the demo network's mock oracle exposes setPrice. */
+export const mockPriceFeedAbi = [
+  { type: "function", name: "fetchPrice", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
+  { type: "function", name: "setPrice", stateMutability: "nonpayable", inputs: [{ name: "price_", type: "uint256" }], outputs: [] },
 ] as const;

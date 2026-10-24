@@ -10,12 +10,14 @@ import { watchlist } from "./watchlist.js";
 
 export const bot = config.telegramToken ? new Bot(config.telegramToken) : null;
 
-export async function notify(text: string): Promise<void> {
-  if (!bot || !config.telegramChatId) return;
+export async function notify(text: string): Promise<boolean> {
+  if (!bot || !config.telegramChatId) return false;
   try {
     await bot.api.sendMessage(config.telegramChatId, text);
+    return true;
   } catch {
     // alerts are best-effort
+    return false;
   }
 }
 

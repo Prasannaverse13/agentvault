@@ -1,18 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import type { useWallet } from "@/lib/useWallet";
-import { cls, fmtNum, fmtPct, fmtUsd } from "@/lib/format";
+import { cls } from "@/lib/format";
 import { Logo } from "./Header";
-import { Simulator } from "./Simulator";
 import { Badge } from "./ui";
 
 type Wallet = ReturnType<typeof useWallet>;
-
-// Illustrative price for the hero calculator only; the simulator and the
-// dashboard read the live Mezo oracle.
-const EXAMPLE_BTC_PRICE = 82_764;
-const LIQUIDATION_ICR = 1.1;
 
 export function Landing({
   wallet,
@@ -29,42 +22,40 @@ export function Landing({
   return (
     <main>
       {/* Hero */}
-      <section className="mx-auto max-w-page px-4 pb-16 pt-8 sm:px-6 lg:pb-24 lg:pt-12">
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center lg:gap-16">
-          <div className="animate-fade-up">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge tone="accent">Mezo Buildathon · DeFi</Badge>
-              <Badge tone={agentOnline ? "good" : "warn"}>
-                <span className={cls("h-2 w-2 rounded-full", agentOnline ? "bg-good" : "bg-warn")} />
-                Agent {agentOnline ? "online" : "offline"}
-              </Badge>
-            </div>
-
-            <h1 className="display mt-6 text-[48px] sm:text-[72px] lg:text-[80px] xl:text-[88px]">
-              Your BTC loan should never surprise you
-            </h1>
-
-            <p className="mt-6 max-w-xl text-[18px] leading-[1.55] text-charcoal">
-              AgentVault is an autonomous risk agent for Bitcoin-backed MUSD loans on Mezo. It
-              watches your collateral ratio around the clock, tops up BTC or repays debt before
-              liquidation, and shows you every decision before it acts.
-            </p>
-
-            <div className="mt-8 flex flex-wrap items-center gap-6">
-              <button className="btn btn-primary px-7 py-3.5 text-[16px]" onClick={primary}>
-                {primaryLabel}
-              </button>
-              <a className="link text-[16px]" href="#simulate">
-                Watch the crash demo
-              </a>
-            </div>
-
-            {wallet.error ? <p className="mt-4 text-[14px] text-danger">{wallet.error}</p> : null}
+      <section className="mx-auto max-w-page px-4 pb-4 pt-10 text-center sm:px-6 lg:pt-16">
+        <div className="animate-fade-up">
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Badge tone="accent">Mezo Buildathon · DeFi</Badge>
+            <Badge tone={agentOnline ? "good" : "warn"}>
+              <span className={cls("h-2 w-2 rounded-full", agentOnline ? "bg-good" : "bg-warn")} />
+              Agent {agentOnline ? "online" : "offline"}
+            </Badge>
           </div>
 
-          <div className="animate-fade-up" style={{ animationDelay: "120ms" }}>
-            <LoanCalculator onCreate={primary} ctaLabel={wallet.address ? "Protect this loan" : primaryLabel} />
+          <h1 className="display mx-auto mt-7 max-w-5xl text-[52px] sm:text-[84px] lg:text-[104px]">
+            Your BTC loan should never surprise you
+          </h1>
+
+          <p className="mx-auto mt-7 max-w-2xl text-[18px] leading-[1.55] text-charcoal">
+            AgentVault is an autonomous risk agent for Bitcoin-backed MUSD loans on Mezo. It
+            watches your collateral ratio around the clock, tops up BTC or repays debt before
+            liquidation, and shows you every decision before it acts.
+          </p>
+
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-6">
+            <button className="btn btn-primary px-7 py-3.5 text-[16px]" onClick={primary}>
+              {primaryLabel}
+            </button>
+            <a className="link text-[16px]" href="#how">
+              How it works
+            </a>
           </div>
+
+          {wallet.error ? <p className="mt-4 text-[14px] text-danger">{wallet.error}</p> : null}
+        </div>
+
+        <div className="animate-fade-up mt-14" style={{ animationDelay: "120ms" }}>
+          <HeroArt />
         </div>
       </section>
 
@@ -84,22 +75,8 @@ export function Landing({
         </div>
       </section>
 
-      {/* Simulator */}
-      <section className="bg-mist">
-        <div className="mx-auto max-w-page px-4 py-20 sm:px-6">
-          <div className="mb-10 grid gap-6 lg:grid-cols-[1fr_0.8fr] lg:items-end">
-            <h2 className="display text-[44px] sm:text-[64px]">See it survive a crash</h2>
-            <p className="text-[18px] leading-relaxed text-charcoal">
-              A live simulation using the Mezo BTC oracle. Pick a scenario and watch the agent
-              defend the position while the unprotected loan gets liquidated.
-            </p>
-          </div>
-          <Simulator mode="demo" />
-        </div>
-      </section>
-
       {/* How it works */}
-      <section className="mx-auto max-w-page px-4 py-20 sm:px-6">
+      <section id="how" className="mx-auto max-w-page scroll-mt-20 px-4 py-20 sm:px-6">
         <h2 className="display max-w-3xl text-[44px] sm:text-[64px]">Watch. Decide. Act.</h2>
         <div className="mt-12 grid gap-10 md:grid-cols-3 md:gap-8">
           {[
@@ -217,120 +194,35 @@ export function Landing({
   );
 }
 
-function LoanCalculator({ onCreate, ctaLabel }: { onCreate: () => void; ctaLabel: string }) {
-  const [collateral, setCollateral] = useState("0.5");
-  const [debt, setDebt] = useState("22000");
-  const [triggerLTV, setTriggerLTV] = useState(60);
-
-  const coll = Number(collateral) || 0;
-  const borrowed = Number(debt) || 0;
-  const icr = coll > 0 && borrowed > 0 ? (coll * EXAMPLE_BTC_PRICE) / borrowed : 0;
-  const ltv = icr > 0 ? 100 / icr : 0;
-  const liquidationPrice = coll > 0 ? (borrowed * LIQUIDATION_ICR) / coll : 0;
-  const triggerPrice = coll > 0 ? borrowed / ((triggerLTV / 100) * coll) : 0;
-  const dropToTrigger = triggerPrice > 0 ? (1 - triggerPrice / EXAMPLE_BTC_PRICE) * 100 : 0;
-  const unsafe = icr > 0 && icr < 1.3;
-
+function HeroArt() {
   return (
-    <div className="rounded-large bg-paper p-5 shadow-xl sm:p-7">
-      <div className="flex items-center justify-between">
-        <p className="text-[15px] font-semibold text-obsidian">Loan health check</p>
-        <span className="text-[12px] font-medium text-slate">BTC at {fmtUsd(EXAMPLE_BTC_PRICE)} (example)</span>
-      </div>
-
-      <CalcField label="You deposit" value={collateral} onChange={setCollateral} unit="BTC" mark="₿" />
-      <CalcField label="You borrow" value={debt} onChange={setDebt} unit="MUSD" mark="$" />
-
-      <div className="mt-5 space-y-3 border-l-2 border-line pl-5 text-[14px]">
-        <CalcRow label="Collateral ratio" value={icr ? fmtPct(icr * 100) : "—"} strong />
-        <CalcRow label="Loan-to-value" value={icr ? fmtPct(ltv) : "—"} />
-        <CalcRow label="Liquidation price" value={liquidationPrice ? fmtUsd(liquidationPrice) : "—"} />
-        <CalcRow
-          label={`Agent steps in at ${triggerLTV}% LTV`}
-          value={
-            triggerPrice
-              ? dropToTrigger > 0
-                ? `${fmtUsd(triggerPrice)} · −${fmtNum(dropToTrigger, 1)}%`
-                : "Already past trigger"
-              : "—"
-          }
-        />
-      </div>
-
-      <div className="mt-5">
-        <div className="flex items-center justify-between text-[13px] font-semibold text-charcoal">
-          <span>Trigger LTV</span>
-          <span className="text-forest">{triggerLTV}%</span>
-        </div>
-        <input
-          className="mt-3 w-full"
-          type="range"
-          min={40}
-          max={80}
-          value={triggerLTV}
-          onChange={(event) => setTriggerLTV(Number(event.target.value))}
-          aria-label="Trigger LTV"
-        />
-      </div>
-
-      {unsafe ? (
-        <p className="mt-4 rounded-card bg-[#fbe4e5] px-4 py-3 text-[13px] font-medium text-danger">
-          ICR is below 130%. Mezo would reject this loan. Add BTC or borrow less.
-        </p>
-      ) : (
-        <p className="mt-4 rounded-card bg-mist px-4 py-3 text-[13px] font-medium text-forest">
-          The agent tops up from your BTC buffer or repays from your MUSD reserve before ICR hits 110%.
-        </p>
-      )}
-
-      <button className="btn btn-primary mt-5 w-full py-3.5 text-[16px]" onClick={onCreate}>
-        {ctaLabel}
-      </button>
-    </div>
-  );
-}
-
-function CalcField({
-  label,
-  value,
-  onChange,
-  unit,
-  mark,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  unit: string;
-  mark: string;
-}) {
-  return (
-    <label className="mt-4 flex items-center justify-between gap-3 rounded-card border border-pebble px-4 py-2.5 transition focus-within:border-forest">
-      <span className="min-w-0 flex-1">
-        <span className="block text-[13px] font-medium text-slate">{label}</span>
-        <input
-          className="w-full bg-transparent text-[26px] font-bold tracking-tight text-obsidian outline-none"
-          value={value}
-          inputMode="decimal"
-          onChange={(event) => onChange(event.target.value)}
-        />
-      </span>
-      <span className="flex shrink-0 items-center gap-2 rounded-full bg-fog py-1.5 pl-1.5 pr-3.5">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-forest text-[13px] font-black text-lime">
+    <div
+      aria-hidden="true"
+      className="relative mx-auto flex h-[260px] max-w-4xl items-center justify-center overflow-hidden rounded-large bg-forest sm:h-[360px]"
+    >
+      {[
+        ["₿", "left-[8%] top-[18%] h-16 w-16 text-[28px] sm:h-24 sm:w-24 sm:text-[40px]"],
+        ["$", "right-[10%] top-[14%] h-14 w-14 text-[24px] sm:h-20 sm:w-20 sm:text-[34px]"],
+        ["₿", "right-[18%] bottom-[10%] h-12 w-12 text-[20px] sm:h-16 sm:w-16 sm:text-[26px]"],
+        ["$", "left-[20%] bottom-[12%] h-12 w-12 text-[20px] sm:h-[72px] sm:w-[72px] sm:text-[30px]"],
+      ].map(([mark, pos], index) => (
+        <span
+          key={index}
+          className={cls(
+            "absolute flex items-center justify-center rounded-full bg-lime font-black text-forest",
+            pos,
+          )}
+        >
           {mark}
         </span>
-        <span className="text-[15px] font-bold text-forest">{unit}</span>
-      </span>
-    </label>
-  );
-}
-
-function CalcRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-slate">{label}</span>
-      <span className={cls("text-right", strong ? "text-[16px] font-bold text-obsidian" : "font-semibold text-charcoal")}>
-        {value}
-      </span>
+      ))}
+      <svg viewBox="0 0 120 140" className="h-[200px] w-auto sm:h-[290px]" fill="none">
+        <path
+          d="M60 6 108 26v36c0 29-20 52-48 62-28-10-48-33-48-62V26L60 6Z"
+          fill="#9fe870"
+        />
+        <path d="M66 32 38 74h20l-6 34 30-44H62l4-32Z" fill="#163300" />
+      </svg>
     </div>
   );
 }

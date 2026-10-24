@@ -14,3 +14,6 @@ coverage/
 .DS_Store
 data/*.json
 !data/.gitkeep
+data-demo/
+*.tsbuildinfo
+contracts/deployments/31337.json

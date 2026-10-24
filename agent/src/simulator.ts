@@ -51,6 +51,9 @@ export type SimResult = {
 
 const BPS = 10_000n;
 
+/** Percent (may be fractional) to basis points. */
+const pctBps = (pct: number): bigint => BigInt(Math.round(pct * 100));
+
 function scenarioConfig(input: SimInput): { dropPct: number; steps: number; recoverPct: number } {
   if (input.scenario === "dip") {
     return { dropPct: 20, steps: 8, recoverPct: 15 };
@@ -89,12 +92,12 @@ export function simulate(input: SimInput): SimResult {
   for (let t = 0; t <= totalSteps; t++) {
     let price: bigint;
     if (t <= cfg.steps) {
-      price = (input.price * (BPS - (BigInt(cfg.dropPct) * 100n * BigInt(t)) / BigInt(cfg.steps))) / BPS;
+      price = (input.price * (BPS - (pctBps(cfg.dropPct) * BigInt(t)) / BigInt(cfg.steps))) / BPS;
     } else {
       const recSteps = BigInt(totalSteps - cfg.steps);
       const recStep = BigInt(t - cfg.steps);
-      const bottomBps = BPS - BigInt(cfg.dropPct) * 100n;
-      const recBps = (BigInt(cfg.recoverPct) * 100n * recStep) / recSteps;
+      const bottomBps = BPS - pctBps(cfg.dropPct);
+      const recBps = (pctBps(cfg.recoverPct) * recStep) / recSteps;
       price = (input.price * (bottomBps + recBps)) / BPS;
     }
 

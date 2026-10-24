@@ -93,8 +93,35 @@ export type AgentHealth = {
   execute: boolean;
   vaults: string[];
   telegram: boolean;
+  telegramChat?: boolean;
   llm: boolean;
+  demo?: boolean;
+  pollMs?: number;
 };
+
+export type HistoryPoint = {
+  t: number;
+  price: number;
+  icr: number;
+  coll: number;
+  debt: number;
+  buffer: number;
+  reserve: number;
+};
+
+export type RiskReport = {
+  active: boolean;
+  score: number;
+  band: "low" | "moderate" | "high" | "critical";
+  dropToTrigger: number;
+  dropToLiquidation: number;
+  survivableDropWithAgent: number;
+  coveragePct: number;
+  safetyFundsUsd: number;
+  ltv: number;
+};
+
+export type MarketState = { price: number; startPrice: number };
 
 export type AgentConfig = {
   chain: { chainId: number; name: string; explorer: string; faucet: string };
@@ -102,6 +129,7 @@ export type AgentConfig = {
   factory: string | null;
   agent: string | null;
   execute: boolean;
+  demo?: boolean;
 };
 
 export type ChatResponse = {
@@ -153,6 +181,18 @@ export const api = {
       txHash: string | null;
       error: string | null;
     }>(`/api/check/${vault}`, { method: "POST" }),
+  history: (vault: string) => request<{ points: HistoryPoint[] }>(`/api/history/${vault}`),
+  risk: (vault: string) => request<RiskReport>(`/api/risk/${vault}`),
+  notifyTest: () =>
+    request<{ configured: boolean; sent: boolean }>("/api/notify/test", { method: "POST" }),
+  demoMarket: () => request<MarketState>("/api/demo/market"),
+  demoPrice: (body: { price?: number; changePct?: number; reset?: boolean }) =>
+    request<MarketState>("/api/demo/price", { method: "POST", body: JSON.stringify(body) }),
+  demoFaucet: (address: string, amount = 100) =>
+    request<{ balance: number }>("/api/demo/faucet", {
+      method: "POST",
+      body: JSON.stringify({ address, amount }),
+    }),
   watch: (vault: string) =>
     request<{ ok: boolean; vaults: string[] }>("/api/watch", {
       method: "POST",

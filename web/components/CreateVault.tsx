@@ -10,11 +10,11 @@ import {
   CORE,
 } from "@agentvault/shared";
 import { parseEther, type Address, type Hash } from "viem";
-import { publicClient } from "@/lib/chain";
+import { IS_DEMO, publicClient } from "@/lib/chain";
 import type { AgentConfig, AgentHealth } from "@/lib/api";
 import { api } from "@/lib/api";
 import { fmtNum, fmtPct, shortAddr } from "@/lib/format";
-import type { useWallet } from "@/lib/useWallet";
+import { walletErrorMessage, type useWallet } from "@/lib/useWallet";
 import { Badge, Modal, Spinner, Stat } from "./ui";
 
 type Wallet = ReturnType<typeof useWallet>;
@@ -25,6 +25,7 @@ export function CreateVault({
   wallet,
   config,
   agent,
+  existingVault,
   onCreated,
   notify,
 }: {
@@ -33,6 +34,8 @@ export function CreateVault({
   wallet: Wallet;
   config: AgentConfig | null;
   agent: AgentHealth | null;
+  /** Open a new loan on a vault that already exists (skips vault creation). */
+  existingVault?: Address;
   onCreated: (vault: Address) => void;
   notify: (message: string, kind?: "ok" | "err") => void;
 }) {
@@ -41,17 +44,20 @@ export function CreateVault({
   const [vault, setVault] = useState<Address | null>(null);
   const [triggerLTV, setTriggerLTV] = useState(60);
   const [targetLTV, setTargetLTV] = useState(50);
-  const [collateral, setCollateral] = useState("0.5");
-  const [debt, setDebt] = useState("10000");
-  const [buffer, setBuffer] = useState("0.05");
-  const [reserve, setReserve] = useState("1000");
+  const defaults = IS_DEMO
+    ? { collateral: "1", debt: "40000", buffer: "0.25", reserve: "5000" }
+    : { collateral: "0.05", debt: "2000", buffer: "0.005", reserve: "200" };
+  const [collateral, setCollateral] = useState(defaults.collateral);
+  const [debt, setDebt] = useState(defaults.debt);
+  const [buffer, setBuffer] = useState(defaults.buffer);
+  const [reserve, setReserve] = useState(defaults.reserve);
   const [price, setPrice] = useState<number | null>(null);
   const [minDebt, setMinDebt] = useState(1800);
 
   useEffect(() => {
     if (!open) return;
-    setStep(1);
-    setVault(null);
+    setStep(existingVault ? 2 : 1);
+    setVault(existingVault ?? null);
     Promise.all([
       publicClient.readContract({
         address: CORE.PRICE_FEED as Address,
@@ -67,10 +73,11 @@ export function CreateVault({
       .then(([feedPrice, minimum]) => {
         setPrice(Number(feedPrice) / 1e18);
         setMinDebt(Number(minimum) / 1e18);
-        setDebt(String(Math.max(10000, Number(minimum) / 1e18)));
+        setDebt(String(Math.max(Number(defaults.debt), Number(minimum) / 1e18)));
       })
       .catch(() => undefined);
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, existingVault]);
 
   const factory = config?.factory as Address | undefined;
   const agentAddress = (config?.agent ?? agent?.agent) as Address | null | undefined;
@@ -92,10 +99,10 @@ export function CreateVault({
       notify("Agent address is not available. Is the agent running?", "err");
       return;
     }
-    const client = wallet.getClient();
-    if (!client) return;
     setBusy(true);
     try {
+      const client = await wallet.requireClient();
+      if (!client) return;
       notify("Creating your vault…");
       const triggerICR = parseEther((100 / triggerLTV).toFixed(4));
       const targetICR = parseEther((100 / targetLTV).toFixed(4));
@@ -120,7 +127,7 @@ export function CreateVault({
       notify("Vault created. Now open your loan.");
       setStep(2);
     } catch (error) {
-      notify(errorText(error), "err");
+      notify(walletErrorMessage(error), "err");
     } finally {
       setBusy(false);
     }
@@ -128,8 +135,6 @@ export function CreateVault({
 
   const openLoan = async () => {
     if (!vault) return;
-    const client = wallet.getClient();
-    if (!client) return;
     if (!coll || coll <= 0) {
       notify("Enter a BTC amount", "err");
       return;
@@ -144,6 +149,8 @@ export function CreateVault({
     }
     setBusy(true);
     try {
+      const client = await wallet.requireClient();
+      if (!client) return;
       notify("Opening the MUSD loan…");
       const hash = await client.writeContract({
         address: vault,
@@ -156,23 +163,23 @@ export function CreateVault({
       notify("Loan opened. MUSD is in your wallet.");
       setStep(3);
     } catch (error) {
-      notify(errorText(error), "err");
+      notify(walletErrorMessage(error), "err");
     } finally {
       setBusy(false);
     }
   };
 
   const tx = async (label: string, fn: (client: NonNullable<ReturnType<Wallet["getClient"]>>) => Promise<Hash>) => {
-    const client = wallet.getClient();
-    if (!client) return;
     setBusy(true);
     try {
+      const client = await wallet.requireClient();
+      if (!client) return;
       notify("Confirm in your wallet…");
       const hash = await fn(client);
       await publicClient.waitForTransactionReceipt({ hash });
       notify(label);
     } catch (error) {
-      notify(errorText(error), "err");
+      notify(walletErrorMessage(error), "err");
     } finally {
       setBusy(false);
     }
@@ -255,7 +262,7 @@ export function CreateVault({
           <div>
             <div className="flex items-center justify-between text-[13px]">
               <span className="text-slate">Agent triggers at</span>
-              <span className="text-obsidian">{triggerLTV}% LTV · {(100 / triggerLTV).toFixed(0)}% ICR</span>
+              <span className="text-obsidian">{triggerLTV}% LTV · {(10000 / triggerLTV).toFixed(0)}% ICR</span>
             </div>
             <input
               className="mt-2 w-full"
@@ -273,7 +280,7 @@ export function CreateVault({
           <div>
             <div className="flex items-center justify-between text-[13px]">
               <span className="text-slate">Restores to</span>
-              <span className="text-obsidian">{targetLTV}% LTV · {(100 / targetLTV).toFixed(0)}% ICR</span>
+              <span className="text-obsidian">{targetLTV}% LTV · {(10000 / targetLTV).toFixed(0)}% ICR</span>
             </div>
             <input
               className="mt-2 w-full"
@@ -395,7 +402,3 @@ export function CreateVault({
   );
 }
 
-function errorText(error: unknown): string {
-  const e = error as { shortMessage?: string; message?: string };
-  return (e?.shortMessage || e?.message || String(error)).slice(0, 200);
-}
