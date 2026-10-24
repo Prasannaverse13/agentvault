@@ -5,8 +5,10 @@ services:
     name: agentvault
     runtime: node
     plan: free
-    buildCommand: npm install -g pnpm@11.22.0 && pnpm install --frozen-lockfile && pnpm --filter @agentvault/web build
-    startCommand: pnpm --filter @agentvault/agent start
+    # NODE_ENV=development only for the install step so dev tools (tsx, typescript, tailwind)
+    # are installed. next build sets production itself.
+    buildCommand: NODE_ENV=development pnpm install --frozen-lockfile --filter "@agentvault/web..." --filter "@agentvault/agent..." && NODE_OPTIONS=--max-old-space-size=460 pnpm --filter @agentvault/web build
+    startCommand: pnpm run start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
@@ -19,12 +21,10 @@ services:
         value: "0xAbb30839FE657D59b4CBCbB737f4af896c5a8b62"
       - key: OPENAI_MODEL
         value: "gpt-4o-mini"
-      # Secrets: set these in the Render dashboard, never in git.
+      - key: AGENT_EXECUTE
+        value: "true"
+      # Secrets: you are prompted for these when the Blueprint is created. Never put them in git.
       - key: AGENT_PRIVATE_KEY
         sync: false
       - key: OPENAI_API_KEY
-        sync: false
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
-      - key: TELEGRAM_CHAT_ID
         sync: false
