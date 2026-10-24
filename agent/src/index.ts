@@ -22,6 +22,15 @@ async function main() {
 
   startTelegram();
 
+  // Free hosts (Render) sleep after ~15 minutes without inbound traffic. While awake, the
+  // agent pings its own public URL so it keeps watching vaults. RENDER_EXTERNAL_URL is set by Render.
+  const selfUrl = process.env.RENDER_EXTERNAL_URL;
+  if (selfUrl) {
+    setInterval(() => {
+      void fetch(`${selfUrl.replace(/\/$/, "")}/api/health`).catch(() => undefined);
+    }, 8 * 60 * 1000);
+  }
+
   const tick = async () => {
     for (const vault of watchlist.list()) {
       try {
