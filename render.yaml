@@ -1,0 +1,30 @@
+# Render Blueprint: one free web service that runs the agent and serves the web app,
+# so the whole project lives behind a single URL.
+services:
+  - type: web
+    name: agentvault
+    runtime: node
+    plan: free
+    buildCommand: npm install -g pnpm@11.22.0 && pnpm install --frozen-lockfile && pnpm --filter @agentvault/web build
+    startCommand: pnpm --filter @agentvault/agent start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: FACTORY_ADDRESS
+        value: "0x0Eb2cD465946e7eac309bCF311Dbd2Dd5cc7C31d"
+      - key: NEXT_PUBLIC_FACTORY_ADDRESS
+        value: "0x0Eb2cD465946e7eac309bCF311Dbd2Dd5cc7C31d"
+      - key: VAULT_ADDRESS
+        value: "0xAbb30839FE657D59b4CBCbB737f4af896c5a8b62"
+      - key: OPENAI_MODEL
+        value: "gpt-4o-mini"
+      # Secrets: set these in the Render dashboard, never in git.
+      - key: AGENT_PRIVATE_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false

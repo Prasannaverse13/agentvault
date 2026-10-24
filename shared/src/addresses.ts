@@ -61,7 +61,7 @@ export const FACTORY_ADDRESS = (process.env.NEXT_PUBLIC_FACTORY_ADDRESS ??
   process.env.FACTORY_ADDRESS ??
   (IS_LOCAL ? LOCAL_FACTORY : "")) as `0x${string}`;
 
-export const AGENT_URL = (process.env.NEXT_PUBLIC_AGENT_URL ?? "http://localhost:8787").replace(
+export const AGENT_URL = (process.env.NEXT_PUBLIC_AGENT_URL ?? "").replace(
   /\/$/,
   "",
 );

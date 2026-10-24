@@ -1,5 +1,9 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import fastifyStatic from "@fastify/static";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Address } from "viem";
 import { config } from "./config.js";
 import { agentAccount, readPrice, readVault } from "./chain.js";
@@ -22,6 +26,21 @@ function isAddress(value: string): value is Address {
 export async function buildServer() {
   const app = Fastify({ logger: true });
   await app.register(cors, { origin: true });
+
+  // Single-host deployment: when the web app has been built (web/out), the agent
+  // serves it too, so the dashboard and the API share one URL.
+  const webRoot = process.env.WEB_DIR
+    ? path.resolve(process.env.WEB_DIR)
+    : fileURLToPath(new URL("../../web/out", import.meta.url));
+  if (fs.existsSync(path.join(webRoot, "index.html"))) {
+    await app.register(fastifyStatic, { root: webRoot });
+    app.setNotFoundHandler((request, reply) => {
+      if (request.method === "GET" && !request.url.startsWith("/api/")) {
+        return reply.sendFile("index.html");
+      }
+      return reply.code(404).send({ error: "Not found" });
+    });
+  }
 
   app.get("/api/health", async () => ({
     ok: true,

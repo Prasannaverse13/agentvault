@@ -16,7 +16,9 @@
     "demo:fund": "pnpm --filter @agentvault/agent exec tsx scripts/fund-agent.ts",
     "demo:transfer": "pnpm --filter @agentvault/agent exec tsx scripts/transfer.ts",
     "typecheck": "pnpm --filter @agentvault/shared build && pnpm --filter @agentvault/agent build && pnpm --filter @agentvault/web build",
-    "demo": "node scripts/demo.mjs"
+    "demo": "node scripts/demo.mjs",
+    "build:single": "pnpm --filter @agentvault/web build",
+    "start": "pnpm --filter @agentvault/agent start"
   },
   "packageManager": "pnpm@11.22.0"
 }

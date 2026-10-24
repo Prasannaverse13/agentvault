@@ -1,5 +1,8 @@
+// Production builds talk to the agent on the same origin (relative URLs).
+// Development points at the local agent unless NEXT_PUBLIC_AGENT_URL says otherwise.
 export const AGENT_URL = (
-  process.env.NEXT_PUBLIC_AGENT_URL || "http://localhost:8787"
+  process.env.NEXT_PUBLIC_AGENT_URL ??
+  (process.env.NODE_ENV === "production" ? "" : "http://localhost:8787")
 ).replace(/\/$/, "");
 
 export type PositionView = {

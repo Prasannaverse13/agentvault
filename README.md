@@ -459,6 +459,23 @@ activity tab data*. Demo data lives in `data-demo/` and never touches testnet da
 5. Connect MetaMask (Mezo Testnet is added automatically), create a vault and open a loan from the UI,
    or use the scripts below.
 
+### 8.2b Deploy on one URL (free)
+
+The web app builds to static files that the agent serves, so the dashboard and the API share one
+origin. [`render.yaml`](render.yaml) describes a single Render web service:
+
+```bash
+# build: installs, then builds the web app to web/out
+npm install -g pnpm@11.22.0 && pnpm install --frozen-lockfile && pnpm --filter @agentvault/web build
+# start: the agent serves /api and the built web app
+pnpm --filter @agentvault/agent start
+```
+
+Set `AGENT_PRIVATE_KEY` (and optionally `OPENAI_API_KEY`, `TELEGRAM_*`) in the host's environment
+settings, never in git. On a free tier the service sleeps when idle, so ping `/api/health` every
+few minutes with a free uptime monitor to keep the monitor loop running. Event history resets when
+the free instance restarts; vault state lives on-chain.
+
 ### 8.3 Scripts
 
 | Command | What it does |
