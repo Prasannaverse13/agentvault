@@ -1,34 +1,45 @@
 import type { Config } from "tailwindcss";
 
+// Wise-inspired tokens: Forest Ink carries weight, Lime Voltage is the single
+// action accent, Fog/Linen Mist are the soft surfaces on a white canvas.
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        ink: "#05070a",
-        panel: "#0a0e14",
-        panel2: "#0e141c",
-        line: "#1b2431",
-        accent: "#ff2d55",
-        ember: "#ff8a3d",
-        mint: "#3ddc97",
-        muted: "#8492a6",
+        forest: "#163300",
+        lime: "#9fe870",
+        spruce: "#054d28",
+        mist: "#e2f6d5",
+        fog: "#e8ebe6",
+        obsidian: "#0e0f0c",
+        charcoal: "#454745",
+        slate: "#6a6c6a",
+        pebble: "#868685",
+        paper: "#ffffff",
+        line: "#dfe3dc",
+        signal: "#0b4c72",
+        // Status roles (product need, kept out of brand surfaces).
+        good: "#054d28",
+        warn: "#a05a00",
+        danger: "#cb272f",
       },
       fontFamily: {
-        sans: [
-          "ui-sans-serif",
-          "system-ui",
-          "-apple-system",
-          "Segoe UI",
-          "Roboto",
-          "Helvetica Neue",
-          "Arial",
-        ],
+        sans: ["var(--font-inter)", "Inter", "ui-sans-serif", "system-ui", "Segoe UI", "Roboto", "sans-serif"],
         mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"],
       },
+      borderRadius: {
+        card: "10px",
+        panel: "16px",
+        large: "28px",
+      },
       boxShadow: {
-        glow: "0 0 60px rgba(255, 45, 85, 0.25)",
-        soft: "0 20px 60px rgba(0, 0, 0, 0.45)",
+        subtle: "rgba(14, 15, 12, 0.12) 0px 0px 0px 1px",
+        lg: "rgba(0, 0, 0, 0.08) 0px 6px 20px 0px",
+        xl: "rgba(0, 0, 0, 0.15) 0px 10px 32px 0px, rgba(0, 0, 0, 0.04) 0px 40px 40px 0px",
+      },
+      maxWidth: {
+        page: "1200px",
       },
       keyframes: {
         "fade-up": {
@@ -37,7 +48,7 @@ const config: Config = {
         },
         pulseSoft: {
           "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0.55" },
+          "50%": { opacity: "0.45" },
         },
       },
       animation: {

@@ -164,7 +164,7 @@ pnpm approve-builds --all          # pnpm 11: allow keccak / secp256k1 / esbuild
      decision and the event feed.
    - Open a vault whose ICR is below the trigger and the agent will spend the BTC buffer to
      restore the target ICR — a real transaction on the Mezo explorer.
-   - Use the simulator to show a 35% crash: the baseline path liquidates, the agent path does not.
+   - Use the simulator to show a 45% crash: the no-agent path liquidates, the funded agent path does not. (A 35% drop is not enough: a loan at 180% ICR only falls to about 117%, above the 110% liquidation line.) Refill the vault safety funds first so the agent has ammunition.
 
 ### Demo scripts (all live on Mezo testnet)
 

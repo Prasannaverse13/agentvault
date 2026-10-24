@@ -213,49 +213,49 @@ export function CreateVault({
       subtitle="One vault, one trove, one autonomous guardian."
       width="max-w-2xl"
     >
-      <div className="mb-5 flex items-center gap-2 text-[10px] uppercase tracking-[0.14em] text-muted">
+      <div className="mb-5 flex items-center gap-2 text-[14px] text-slate">
         {[1, 2, 3].map((item) => (
           <div key={item} className="flex items-center gap-2">
             <span
-              className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-                step >= item ? "border-accent bg-accent/15 text-accent" : "border-line"
+              className={`flex h-7 w-7 items-center justify-center rounded-full text-[13px] font-bold ${
+                step >= item ? "bg-forest text-lime" : "bg-fog text-slate"
               }`}
             >
               {item}
             </span>
-            <span className={step === item ? "text-white" : ""}>
+            <span className={step === item ? "text-forest" : ""}>
               {item === 1 ? "Vault" : item === 2 ? "Loan" : "Safety"}
             </span>
-            {item < 3 ? <span className="h-px w-8 bg-line" /> : null}
+            {item < 3 ? <span className="h-0.5 w-8 rounded-full bg-line" /> : null}
           </div>
         ))}
       </div>
 
       {step === 1 ? (
         <div className="space-y-4">
-          <div className="rounded-xl border border-line/70 bg-ink/40 p-4 text-sm">
+          <div className="rounded-panel bg-fog/60 p-4 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-muted">Guardian agent</span>
-              <span className="font-mono text-xs text-white">
+              <span className="text-slate">Guardian agent</span>
+              <span className="font-mono text-[13px] text-obsidian">
                 {agentAddress ? shortAddr(agentAddress) : "agent offline"}
               </span>
             </div>
             <div className="mt-2 flex items-center justify-between">
-              <span className="text-muted">Factory</span>
-              <span className="font-mono text-xs text-white">
+              <span className="text-slate">Factory</span>
+              <span className="font-mono text-[13px] text-obsidian">
                 {factory ? shortAddr(factory) : "not configured"}
               </span>
             </div>
             <div className="mt-2 flex items-center justify-between">
-              <span className="text-muted">BTC oracle</span>
-              <span className="text-xs text-white">{price ? `$${fmtNum(price, 0)}` : "loading…"}</span>
+              <span className="text-slate">BTC oracle</span>
+              <span className="text-[13px] text-obsidian">{price ? `$${fmtNum(price, 0)}` : "loading…"}</span>
             </div>
           </div>
 
           <div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted">Agent triggers at</span>
-              <span className="text-white">{triggerLTV}% LTV · {(100 / triggerLTV).toFixed(0)}% ICR</span>
+            <div className="flex items-center justify-between text-[13px]">
+              <span className="text-slate">Agent triggers at</span>
+              <span className="text-obsidian">{triggerLTV}% LTV · {(100 / triggerLTV).toFixed(0)}% ICR</span>
             </div>
             <input
               className="mt-2 w-full"
@@ -271,9 +271,9 @@ export function CreateVault({
             />
           </div>
           <div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted">Restores to</span>
-              <span className="text-white">{targetLTV}% LTV · {(100 / targetLTV).toFixed(0)}% ICR</span>
+            <div className="flex items-center justify-between text-[13px]">
+              <span className="text-slate">Restores to</span>
+              <span className="text-obsidian">{targetLTV}% LTV · {(100 / targetLTV).toFixed(0)}% ICR</span>
             </div>
             <input
               className="mt-2 w-full"
@@ -289,7 +289,7 @@ export function CreateVault({
             {busy ? <Spinner /> : null}
             {wallet.address ? "Create vault" : "Connect wallet to create"}
           </button>
-          <p className="text-center text-[10px] text-muted">
+          <p className="text-center text-[14px] text-slate">
             The agent can only add collateral and repay debt. It can never withdraw.
           </p>
         </div>
@@ -324,7 +324,7 @@ export function CreateVault({
             <Stat label="LTV" value={icr ? fmtPct(ltv) : "—"} />
           </div>
 
-          <div className="rounded-xl border border-line/70 bg-ink/40 px-4 py-3 text-[11px] leading-relaxed text-muted">
+          <div className="rounded-panel bg-fog/60 px-4 py-3 text-[13px] leading-relaxed text-slate">
             Minimum debt is {fmtNum(minDebt, 0)} MUSD. Keep ICR above 150% so a normal dip does not
             threaten the loan. The MUSD is minted to your wallet when the trove opens.
           </div>
@@ -333,7 +333,7 @@ export function CreateVault({
             {busy ? <Spinner /> : null}
             Open loan
           </button>
-          <button className="btn btn-ghost w-full text-xs" onClick={() => setStep(3)} disabled={busy}>
+          <button className="btn btn-ghost w-full text-[13px]" onClick={() => setStep(3)} disabled={busy}>
             Skip for now
           </button>
         </div>
@@ -343,12 +343,12 @@ export function CreateVault({
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Badge tone="good">Vault live</Badge>
-            <span className="font-mono text-[11px] text-muted">{vault}</span>
+            <span className="font-mono text-[13px] text-slate">{vault}</span>
           </div>
 
-          <div className="rounded-xl border border-line/70 bg-ink/40 p-4">
-            <p className="text-sm font-medium text-white">Give the agent ammo</p>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted">
+          <div className="rounded-panel bg-fog/60 p-4">
+            <p className="text-[17px] font-bold text-obsidian">Give the agent ammo</p>
+            <p className="mt-1 text-[13px] leading-relaxed text-slate">
               The agent can only spend what sits in the vault. A BTC buffer is used for collateral
               top-ups; a MUSD reserve is used to repay debt. Both stay under your ownership.
             </p>
@@ -360,7 +360,7 @@ export function CreateVault({
                 onChange={(event) => setBuffer(event.target.value)}
                 inputMode="decimal"
               />
-              <button className="btn shrink-0 text-xs" onClick={addBuffer} disabled={busy}>
+              <button className="btn shrink-0 text-[13px]" onClick={addBuffer} disabled={busy}>
                 Add BTC buffer
               </button>
             </div>
@@ -371,7 +371,7 @@ export function CreateVault({
                 onChange={(event) => setReserve(event.target.value)}
                 inputMode="decimal"
               />
-              <button className="btn shrink-0 text-xs" onClick={addReserve} disabled={busy}>
+              <button className="btn shrink-0 text-[13px]" onClick={addReserve} disabled={busy}>
                 Fund MUSD reserve
               </button>
             </div>
@@ -386,7 +386,7 @@ export function CreateVault({
           >
             Finish setup
           </button>
-          <p className="text-center text-[10px] text-muted">
+          <p className="text-center text-[14px] text-slate">
             You can add safety funds any time from the dashboard.
           </p>
         </div>

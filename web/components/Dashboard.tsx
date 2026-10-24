@@ -83,12 +83,13 @@ export function Dashboard({
   };
 
   return (
-    <main className="mx-auto max-w-7xl px-5 pb-20 pt-8">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <main className="mx-auto max-w-page px-4 pb-24 pt-8 sm:px-6">
+      <h1 className="display text-[48px] sm:text-[72px]">Your vault</h1>
+      <div className="mb-8 mt-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={agentOnline ? "good" : "warn"}>
             <span
-              className={`h-1.5 w-1.5 rounded-full ${agentOnline ? "animate-pulse-soft bg-mint" : "bg-ember"}`}
+              className={`h-1.5 w-1.5 rounded-full ${agentOnline ? "animate-pulse-soft bg-good" : "bg-warn"}`}
             />
             {agentOnline ? "Agent online" : "Agent offline"}
           </Badge>
@@ -96,11 +97,11 @@ export function Dashboard({
             <Badge tone="accent">Live on-chain read</Badge>
           ) : null}
           <Badge>
-            Vault <span className="font-mono text-white">{shortAddr(vault)}</span>
+            Vault <span className="font-mono text-obsidian">{shortAddr(vault)}</span>
           </Badge>
           {isOwner ? <Badge tone="accent">Owner wallet</Badge> : <Badge tone="warn">Read only</Badge>}
           <a
-            className="badge transition hover:text-white"
+            className="badge transition hover:bg-mist"
             href={`${EXPLORER}/address/${vault}`}
             target="_blank"
             rel="noreferrer"
@@ -109,16 +110,13 @@ export function Dashboard({
           </a>
         </div>
         <div className="flex items-center gap-2">
-          <button className="btn btn-ghost text-xs" onClick={onRefresh}>
+          <button className="link text-[15px]" onClick={onRefresh}>
             Refresh
-          </button>
-          <button className="btn btn-ghost text-xs" onClick={onNewVault}>
-            + New vault
           </button>
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-12">
+      <div className="grid gap-5 lg:grid-cols-12">
         <div className="lg:col-span-7">
           <PositionCard position={position} />
         </div>
@@ -137,7 +135,7 @@ export function Dashboard({
           <Simulator mode="live" vault={vault} position={position} request={simRequest} />
         </div>
 
-        <div className="space-y-4 lg:col-span-5">
+        <div className="space-y-5 lg:col-span-5">
           <RulesCard
             vault={vault}
             position={position}
@@ -194,31 +192,24 @@ function PositionCard({ position }: { position: PositionView }) {
       />
 
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-        <div className="relative mx-auto h-[150px] w-[150px] shrink-0 sm:mx-0">
+        <div className="relative mx-auto h-[168px] w-[168px] shrink-0 sm:mx-0">
           <svg viewBox="0 0 140 140" className="h-full w-full -rotate-90">
-            <circle cx="70" cy="70" r={radius} fill="none" stroke="#1b2431" strokeWidth="10" />
+            <circle cx="70" cy="70" r={radius} fill="none" stroke="#e8ebe6" strokeWidth="12" />
             <circle
               cx="70"
               cy="70"
               r={radius}
               fill="none"
-              stroke="url(#gauge)"
-              strokeWidth="10"
+              stroke={position.health === "safe" ? "#163300" : position.health === "watch" ? "#a05a00" : "#cb272f"}
+              strokeWidth="12"
               strokeLinecap="round"
               strokeDasharray={`${pct * circumference} ${circumference}`}
             />
-            <defs>
-              <linearGradient id="gauge" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#ff8a3d" />
-                <stop offset="55%" stopColor="#ff2d55" />
-                <stop offset="100%" stopColor="#3ddc97" />
-              </linearGradient>
-            </defs>
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <p className="text-[9px] uppercase tracking-[0.18em] text-muted">ICR</p>
-            <p className="text-3xl font-semibold tracking-tight text-white">{fmtPct(position.icr)}</p>
-            <p className="text-[11px] text-muted">LTV {fmtPct(position.ltv)}</p>
+            <p className="text-[14px] text-slate">ICR</p>
+            <p className="text-[32px] font-black tracking-[-0.04em] text-forest">{fmtPct(position.icr)}</p>
+            <p className="text-[13px] text-slate">LTV {fmtPct(position.ltv)}</p>
           </div>
         </div>
 
@@ -238,17 +229,17 @@ function PositionCard({ position }: { position: PositionView }) {
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px]">
         <span className="badge">
-          Trigger <span className="text-white">{fmtPct(position.triggerICR)}</span>
+          Trigger <span className="text-obsidian">{fmtPct(position.triggerICR)}</span>
         </span>
         <span className="badge">
-          Target <span className="text-white">{fmtPct(position.targetICR)}</span>
+          Target <span className="text-obsidian">{fmtPct(position.targetICR)}</span>
         </span>
         <span className="badge">
-          BTC <span className="text-white">{fmtUsd(position.price)}</span>
+          BTC <span className="text-obsidian">{fmtUsd(position.price)}</span>
         </span>
-        <span className={cls("badge", position.autoProtect ? "border-mint/30 text-mint" : "border-ember/30 text-ember")}>
+        <span className={cls("badge", position.autoProtect ? "border-[#cfe9bd] text-good" : "border-[#f3dcae] text-warn")}>
           {position.autoProtect ? "Protection active" : "Protection paused"}
         </span>
       </div>
@@ -305,32 +296,32 @@ function AgentCard({
         }
       />
 
-      <div className="rounded-xl border border-line/70 bg-ink/40 p-4">
-        <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Right now</p>
-        <p className="mt-1.5 text-sm leading-relaxed text-white">{decision.reason}</p>
+      <div className="rounded-panel bg-fog/60 p-4">
+        <p className="text-[14px] text-slate">Right now</p>
+        <p className="mt-1.5 text-[16px] font-medium leading-relaxed text-obsidian">{decision.reason}</p>
         {decision.kind !== "hold" ? (
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <div className="rounded-lg border border-line/60 px-3 py-2">
-              <p className="text-[10px] text-muted">Top up</p>
-              <p className="text-sm font-semibold text-white">{fmtNum(decision.topUpAmount, 4)} BTC</p>
+            <div className="rounded-card border border-line px-3 py-2">
+              <p className="text-[14px] text-slate">Top up</p>
+              <p className="text-[18px] font-bold tracking-tight text-obsidian">{fmtNum(decision.topUpAmount, 4)} BTC</p>
             </div>
-            <div className="rounded-lg border border-line/60 px-3 py-2">
-              <p className="text-[10px] text-muted">Repay</p>
-              <p className="text-sm font-semibold text-white">{fmtNum(decision.repayAmount, 0)} MUSD</p>
+            <div className="rounded-card border border-line px-3 py-2">
+              <p className="text-[14px] text-slate">Repay</p>
+              <p className="text-[18px] font-bold tracking-tight text-obsidian">{fmtNum(decision.repayAmount, 0)} MUSD</p>
             </div>
           </div>
         ) : null}
-        <div className="mt-3 flex items-center justify-between text-[11px] text-muted">
+        <div className="mt-3 flex items-center justify-between text-[13px] text-slate">
           <span>ICR now</span>
-          <span className="text-white">{fmtPct(decision.icr)}</span>
+          <span className="text-obsidian">{fmtPct(decision.icr)}</span>
         </div>
-        <div className="mt-1 flex items-center justify-between text-[11px] text-muted">
+        <div className="mt-1 flex items-center justify-between text-[13px] text-slate">
           <span>After action</span>
-          <span className="text-mint">{fmtPct(decision.projectedICR)}</span>
+          <span className="text-good">{fmtPct(decision.projectedICR)}</span>
         </div>
       </div>
 
-      <div className="mt-3 flex-1 space-y-1.5 text-[11px]">
+      <div className="mt-3 flex-1 space-y-1.5 text-[13px]">
         <Row label="Agent wallet" value={shortAddr(position.agent)} mono />
         <Row label="Trigger" value={`${fmtPct(position.triggerICR)} ICR`} />
         <Row label="Target" value={`${fmtPct(position.targetICR)} ICR`} />
@@ -338,13 +329,13 @@ function AgentCard({
       </div>
 
       {!isOwner ? (
-        <p className="mt-3 rounded-lg border border-ember/25 bg-ember/5 px-3 py-2 text-[11px] text-ember">
+        <p className="mt-3 rounded-card border border-[#f3dcae] bg-[#fdf0d5] px-3 py-2 text-[13px] text-warn">
           Connect the owner wallet to update rules or run an agent check.
         </p>
       ) : null}
 
       <button
-        className="btn btn-primary mt-3 w-full text-xs"
+        className="btn btn-primary mt-3 w-full text-[13px]"
         onClick={check}
         disabled={checking || !position.agentConnected}
       >
@@ -352,13 +343,13 @@ function AgentCard({
       </button>
 
       {lastExecution ? (
-        <p className="mt-2 text-center text-[10px] text-muted">
+        <p className="mt-2 text-center text-[14px] text-slate">
           Last action {timeAgo(lastExecution.at)}
           {lastExecution.txHash ? (
             <>
               {" · "}
               <a
-                className="text-mint underline decoration-dotted"
+                className="text-good underline decoration-dotted"
                 href={`${EXPLORER}/tx/${lastExecution.txHash}`}
                 target="_blank"
                 rel="noreferrer"
@@ -375,9 +366,9 @@ function AgentCard({
 
 function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-line/50 px-3 py-1.5">
-      <span className="text-muted">{label}</span>
-      <span className={cls("text-white", mono && "font-mono")}>{value}</span>
+    <div className="flex items-center justify-between rounded-card border border-line px-3 py-1.5">
+      <span className="text-slate">{label}</span>
+      <span className={cls("text-obsidian", mono && "font-mono")}>{value}</span>
     </div>
   );
 }
@@ -434,7 +425,7 @@ function RulesCard({
         subtitle="When ICR falls below the trigger, restore to the target."
         action={
           <div className="flex items-center gap-2">
-            <span className="text-[10px] uppercase tracking-[0.12em] text-muted">Auto</span>
+            <span className="text-[14px] text-slate">Auto</span>
             <Toggle checked={auto} onChange={setAuto} disabled={!isOwner} />
           </div>
         }
@@ -442,10 +433,10 @@ function RulesCard({
 
       <div className="space-y-4">
         <div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted">Trigger</span>
-            <span className="font-medium text-white">
-              {triggerLTV}% LTV <span className="text-muted">· {triggerICR.toFixed(0)}% ICR</span>
+          <div className="flex items-center justify-between text-[13px]">
+            <span className="text-slate">Trigger</span>
+            <span className="font-medium text-obsidian">
+              {triggerLTV}% LTV <span className="text-slate">· {(triggerICR * 100).toFixed(0)}% ICR</span>
             </span>
           </div>
           <input
@@ -464,10 +455,10 @@ function RulesCard({
           />
         </div>
         <div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted">Restore to</span>
-            <span className="font-medium text-white">
-              {targetLTV}% LTV <span className="text-muted">· {targetICR.toFixed(0)}% ICR</span>
+          <div className="flex items-center justify-between text-[13px]">
+            <span className="text-slate">Restore to</span>
+            <span className="font-medium text-obsidian">
+              {targetLTV}% LTV <span className="text-slate">· {(targetICR * 100).toFixed(0)}% ICR</span>
             </span>
           </div>
           <input
@@ -486,17 +477,17 @@ function RulesCard({
         </div>
       </div>
 
-      <div className="mt-4 rounded-lg border border-line/60 bg-ink/40 px-3 py-2.5 text-[11px] text-muted">
-        The agent starts defending at <span className="text-white">{triggerICR.toFixed(0)}% ICR</span> and
-        restores the loan to <span className="text-white">{targetICR.toFixed(0)}% ICR</span>. Liquidation
+      <div className="mt-4 rounded-card bg-fog/60 px-3 py-2.5 text-[13px] text-slate">
+        The agent starts defending at <span className="text-obsidian">{(triggerICR * 100).toFixed(0)}% ICR</span> and
+        restores the loan to <span className="text-obsidian">{(targetICR * 100).toFixed(0)}% ICR</span>. Liquidation
         happens at 110%.
       </div>
 
-      <button className="btn btn-primary mt-3 w-full text-xs" onClick={apply} disabled={!isOwner || !dirty}>
+      <button className="btn btn-primary mt-3 w-full text-[13px]" onClick={apply} disabled={!isOwner || !dirty}>
         {dirty ? "Sign rule update" : "Rules up to date"}
       </button>
       {!isOwner ? (
-        <p className="mt-2 text-center text-[10px] text-muted">Owner wallet required</p>
+        <p className="mt-2 text-center text-[14px] text-slate">Owner wallet required</p>
       ) : null}
     </Card>
   );
@@ -620,17 +611,17 @@ function SafetyCard({
       />
 
       <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-lg border border-line/60 bg-ink/40 px-3 py-2">
-          <p className="text-[10px] text-muted">BTC buffer</p>
-          <p className="text-sm font-semibold text-white">{fmtNum(position.btcBuffer, 4)}</p>
+        <div className="rounded-card bg-fog/60 px-3 py-2">
+          <p className="text-[14px] text-slate">BTC buffer</p>
+          <p className="text-[18px] font-bold tracking-tight text-obsidian">{fmtNum(position.btcBuffer, 4)}</p>
         </div>
-        <div className="rounded-lg border border-line/60 bg-ink/40 px-3 py-2">
-          <p className="text-[10px] text-muted">MUSD reserve</p>
-          <p className="text-sm font-semibold text-white">{fmtNum(position.musdReserve, 0)}</p>
+        <div className="rounded-card bg-fog/60 px-3 py-2">
+          <p className="text-[14px] text-slate">MUSD reserve</p>
+          <p className="text-[18px] font-bold tracking-tight text-obsidian">{fmtNum(position.musdReserve, 0)}</p>
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-4 gap-1 rounded-xl border border-line bg-ink/50 p-1 text-[10px]">
+      <div className="mt-4 grid grid-cols-4 gap-1 rounded-full bg-fog p-1">
         {(
           [
             ["buffer", "Buffer"],
@@ -643,8 +634,8 @@ function SafetyCard({
             key={id}
             onClick={() => setTab(id)}
             className={cls(
-              "rounded-lg px-1 py-1.5 transition",
-              tab === id ? "bg-white/10 text-white" : "text-muted hover:text-white",
+              "segment px-1",
+              tab === id && "segment-active",
             )}
           >
             {label}
@@ -652,7 +643,7 @@ function SafetyCard({
         ))}
       </div>
 
-      <p className="mt-3 text-[11px] text-muted">{copy[tab].hint}</p>
+      <p className="mt-3 text-[13px] text-slate">{copy[tab].hint}</p>
 
       <div className="mt-2 flex gap-2">
         <input
@@ -663,15 +654,15 @@ function SafetyCard({
           placeholder={tab === "buffer" ? "BTC amount" : "MUSD amount"}
           disabled={!isOwner}
         />
-        <button className="btn btn-primary shrink-0 text-xs" onClick={execute} disabled={!isOwner}>
+        <button className="btn btn-primary shrink-0 text-[13px]" onClick={execute} disabled={!isOwner}>
           {copy[tab].cta}
         </button>
       </div>
 
       {!isOwner ? (
-        <p className="mt-2 text-[10px] text-muted">
+        <p className="mt-2 text-[14px] text-slate">
           Connect the owner wallet to move funds. Need testnet BTC?{" "}
-          <a className="text-accent" href={FAUCET} target="_blank" rel="noreferrer">
+          <a className="link" href={FAUCET} target="_blank" rel="noreferrer">
             Faucet ↗
           </a>
         </p>
@@ -766,23 +757,23 @@ function ChatCard({
           >
             <div
               className={cls(
-                "max-w-[86%] rounded-2xl px-3.5 py-2.5 text-[12.5px] leading-relaxed",
+                "max-w-[86%] rounded-[20px] px-4 py-3 text-[14px] leading-relaxed",
                 message.role === "user"
-                  ? "rounded-br-md bg-accent text-white"
-                  : "rounded-bl-md border border-line bg-ink/60 text-white/90",
+                  ? "rounded-br-md bg-forest text-paper"
+                  : "rounded-bl-md bg-fog/60 text-charcoal",
               )}
             >
               <p>{message.text}</p>
               {message.patch ? (
-                <div className="mt-2 rounded-lg border border-mint/25 bg-mint/5 p-2.5">
-                  <p className="text-[10px] uppercase tracking-[0.14em] text-mint">Proposed rules</p>
-                  <p className="mt-1 text-[11px] text-white">
+                <div className="mt-2 rounded-card border border-[#cfe9bd] bg-mist p-2.5">
+                  <p className="text-[14px] text-good">Proposed rules</p>
+                  <p className="mt-1 text-[13px] text-obsidian">
                     Trigger {fmtPct(Number(message.patch.triggerICR) * 100)} ICR · Target{" "}
                     {fmtPct(Number(message.patch.targetICR) * 100)} ICR ·{" "}
                     {message.patch.autoProtect ? "active" : "paused"}
                   </p>
                   <button
-                    className="btn btn-primary mt-2 w-full py-1.5 text-[10px]"
+                    className="btn btn-primary mt-2 w-full py-1.5 text-[14px]"
                     onClick={() => applyPatch(message.patch ?? null)}
                     disabled={!isOwner}
                   >
@@ -794,7 +785,7 @@ function ChatCard({
           </div>
         ))}
         {sending ? (
-          <div className="flex items-center gap-2 text-[11px] text-muted">
+          <div className="flex items-center gap-2 text-[13px] text-slate">
             <Spinner className="h-3 w-3" /> Agent is thinking…
           </div>
         ) : null}
@@ -804,7 +795,7 @@ function ChatCard({
         {suggestions.map((suggestion) => (
           <button
             key={suggestion}
-            className="rounded-full border border-line px-2.5 py-1 text-[10px] text-muted transition hover:border-white/25 hover:text-white"
+            className="rounded-full bg-mist px-3 py-1.5 text-[13px] font-semibold text-forest transition hover:bg-lime"
             onClick={() => void send(suggestion)}
             disabled={sending}
           >
@@ -827,7 +818,7 @@ function ChatCard({
           placeholder="Ask about your loan…"
           disabled={sending}
         />
-        <button className="btn btn-primary shrink-0 px-3 text-xs" type="submit" disabled={sending || !input.trim()}>
+        <button className="btn btn-primary shrink-0 px-3 text-[13px]" type="submit" disabled={sending || !input.trim()}>
           Send
         </button>
       </form>
@@ -857,33 +848,33 @@ function ActivityCard({
         title="Agent activity"
         subtitle="Every decision and on-chain action is logged."
         action={
-          <button className="text-[10px] text-muted transition hover:text-white" onClick={onRefresh}>
+          <button className="text-[14px] text-slate transition hover:text-obsidian" onClick={onRefresh}>
             Refresh
           </button>
         }
       />
       <div className="flex-1 space-y-2 overflow-y-auto pr-1">
         {events.length === 0 ? (
-          <p className="rounded-lg border border-line/60 bg-ink/40 px-3 py-6 text-center text-xs text-muted">
+          <p className="rounded-card bg-fog/60 px-3 py-6 text-center text-[13px] text-slate">
             No activity yet. Run an agent check or a simulation.
           </p>
         ) : null}
         {events.map((event) => (
-          <div key={event.id} className="rounded-xl border border-line/60 bg-ink/40 px-3 py-2.5">
+          <div key={event.id} className="rounded-panel bg-fog/60 px-3 py-2.5">
             <div className="flex items-start gap-2">
-              <span className="mt-0.5 text-xs">{icon[event.type] ?? "•"}</span>
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-paper text-[14px] shadow-subtle">{icon[event.type] ?? "•"}</span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[12px] font-medium text-white">{event.title}</p>
+                <p className="truncate text-[14px] font-semibold text-obsidian">{event.title}</p>
                 {event.detail ? (
-                  <p className="mt-0.5 line-clamp-2 text-[10.5px] leading-relaxed text-muted">
+                  <p className="mt-0.5 line-clamp-2 text-[13px] leading-relaxed text-slate">
                     {event.detail}
                   </p>
                 ) : null}
-                <div className="mt-1 flex items-center gap-2 text-[9.5px] text-muted">
+                <div className="mt-1 flex items-center gap-2 text-[14px] text-slate">
                   <span>{timeAgo(event.at)}</span>
                   {event.txHash ? (
                     <a
-                      className="text-mint underline decoration-dotted"
+                      className="text-good underline decoration-dotted"
                       href={`${EXPLORER}/tx/${event.txHash}`}
                       target="_blank"
                       rel="noreferrer"

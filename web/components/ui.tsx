@@ -13,7 +13,7 @@ export function Card({
   id?: string;
 }) {
   return (
-    <section id={id} className={cls("card p-5", className)}>
+    <section id={id} className={cls("card scroll-mt-24 p-6", className)}>
       {children}
     </section>
   );
@@ -29,10 +29,10 @@ export function SectionTitle({
   action?: ReactNode;
 }) {
   return (
-    <div className="mb-4 flex items-start justify-between gap-3">
+    <div className="mb-5 flex items-start justify-between gap-3">
       <div>
-        <h2 className="text-[15px] font-semibold tracking-tight text-white">{title}</h2>
-        {subtitle ? <p className="mt-1 text-xs text-muted">{subtitle}</p> : null}
+        <h2 className="heading text-[22px]">{title}</h2>
+        {subtitle ? <p className="mt-1 text-[14px] leading-relaxed text-slate">{subtitle}</p> : null}
       </div>
       {action}
     </div>
@@ -49,11 +49,11 @@ export function Badge({
   className?: string;
 }) {
   const tones = {
-    default: "border-line bg-white/5 text-muted",
-    good: "border-mint/30 bg-mint/10 text-mint",
-    warn: "border-ember/30 bg-ember/10 text-ember",
-    danger: "border-accent/35 bg-accent/10 text-accent",
-    accent: "border-accent/30 bg-accent/10 text-accent",
+    default: "bg-fog text-forest",
+    good: "bg-mist text-good",
+    warn: "bg-[#fdf0d5] text-warn",
+    danger: "bg-[#fbe4e5] text-danger",
+    accent: "bg-forest text-lime",
   };
   return <span className={cls("badge", tones[tone], className)}>{children}</span>;
 }
@@ -70,10 +70,10 @@ export function Stat({
   className?: string;
 }) {
   return (
-    <div className={cls("rounded-xl border border-line/70 bg-ink/40 px-3.5 py-3", className)}>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">{label}</p>
-      <p className="mt-1 text-lg font-semibold tracking-tight text-white">{value}</p>
-      {sub ? <p className="mt-0.5 text-[11px] text-muted">{sub}</p> : null}
+    <div className={cls("rounded-panel bg-fog/70 px-4 py-3.5", className)}>
+      <p className="text-[13px] font-medium text-slate">{label}</p>
+      <p className="mt-1 text-[20px] font-bold tracking-tight text-obsidian">{value}</p>
+      {sub ? <p className="mt-0.5 text-[12px] text-slate">{sub}</p> : null}
     </div>
   );
 }
@@ -95,16 +95,16 @@ export function Toggle({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cls(
-        "relative h-6 w-11 rounded-full border transition disabled:opacity-40",
-        checked ? "border-mint/40 bg-mint/25" : "border-line bg-ink",
+        "relative h-7 w-12 rounded-full transition disabled:opacity-40",
+        checked ? "bg-forest" : "bg-fog shadow-subtle",
       )}
     >
       <span
         className={cls(
-          "absolute top-0.5 h-4.5 w-4.5 rounded-full transition-all",
-          checked ? "left-[22px] bg-mint" : "left-0.5 bg-muted",
+          "absolute top-1 rounded-full transition-all",
+          checked ? "left-6 bg-lime" : "left-1 bg-pebble",
         )}
-        style={{ height: 18, width: 18 }}
+        style={{ height: 20, width: 20 }}
       />
     </button>
   );
@@ -114,7 +114,7 @@ export function Spinner({ className }: { className?: string }) {
   return (
     <span
       className={cls(
-        "inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white",
+        "inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent opacity-70",
         className,
       )}
     />
@@ -141,26 +141,29 @@ export function Modal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         aria-label="Close"
-        className="absolute inset-0 bg-ink/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-obsidian/50"
         onClick={onClose}
       />
       <div
-        className={cls(
-          "relative w-full overflow-y-auto rounded-2xl border border-line bg-panel shadow-soft",
-          width,
-        )}
+        className={cls("relative w-full overflow-y-auto rounded-large bg-paper shadow-xl", width)}
         style={{ maxHeight: "90vh" }}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-5">
+        <div className="flex items-start justify-between gap-4 px-7 pb-2 pt-7">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight text-white">{title}</h2>
-            {subtitle ? <p className="mt-1 text-sm text-muted">{subtitle}</p> : null}
+            <h2 className="heading text-[28px]">{title}</h2>
+            {subtitle ? <p className="mt-1 text-[15px] text-slate">{subtitle}</p> : null}
           </div>
-          <button className="btn btn-ghost h-8 px-2.5 text-xs" onClick={onClose}>
-            Close
+          <button
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-fog text-forest transition hover:bg-mist"
+            onClick={onClose}
+            aria-label="Close dialog"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
           </button>
         </div>
-        <div className="px-6 py-5">{children}</div>
+        <div className="px-7 pb-7 pt-4">{children}</div>
       </div>
     </div>
   );
@@ -173,15 +176,21 @@ export function Toast({
 }) {
   if (!toast) return null;
   return (
-    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fade-up">
+    <div className="fixed bottom-6 left-1/2 z-50 w-[calc(100%-32px)] max-w-md -translate-x-1/2 animate-fade-up">
       <div
         className={cls(
-          "rounded-xl border px-4 py-3 text-sm shadow-soft",
-          toast.kind === "ok"
-            ? "border-mint/30 bg-[#0b1a14] text-mint"
-            : "border-accent/40 bg-[#1a0b10] text-accent",
+          "flex items-start gap-3 rounded-panel px-4 py-3.5 text-[14px] font-medium shadow-xl",
+          toast.kind === "ok" ? "bg-forest text-paper" : "bg-danger text-paper",
         )}
       >
+        <span
+          className={cls(
+            "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-black",
+            toast.kind === "ok" ? "bg-lime text-forest" : "bg-paper text-danger",
+          )}
+        >
+          {toast.kind === "ok" ? "✓" : "!"}
+        </span>
         {toast.message}
       </div>
     </div>

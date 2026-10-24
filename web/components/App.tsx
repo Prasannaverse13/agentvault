@@ -194,32 +194,32 @@ export default function App() {
           notify={notify}
         />
       ) : (
-        <main className="mx-auto flex max-w-3xl flex-col items-center px-5 py-24">
-          <Card className="w-full text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-line bg-panel">
+        <main className="mx-auto flex max-w-3xl flex-col items-center px-4 py-24 sm:px-6">
+          <Card className="w-full p-10 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-mist text-forest">
               <Spinner />
             </div>
-            <p className="mt-4 text-sm font-medium text-white">
+            <p className="heading mt-5 text-[24px]">
               {statusError ? "Could not load your vault" : "Loading your vault…"}
             </p>
-            <p className="mt-1 text-xs text-muted">
+            <p className="mt-2 text-[15px] text-slate">
               {statusError ?? "Reading the trove, oracle price and agent state from Mezo."}
             </p>
             <div className="mt-5 flex flex-wrap justify-center gap-2">
-              <button className="btn btn-primary text-xs" onClick={() => void refreshStatus()}>
+              <button className="btn btn-primary" onClick={() => void refreshStatus()}>
                 Retry
               </button>
-              <button className="btn btn-ghost text-xs" onClick={() => setScreen("landing")}>
+              <button className="btn" onClick={() => setScreen("landing")}>
                 Back to home
               </button>
-              <button className="btn btn-ghost text-xs" onClick={openCreate}>
-                + New vault
+              <button className="btn btn-ghost" onClick={openCreate}>
+                New vault
               </button>
             </div>
             {statusError ? (
-              <p className="mt-4 text-[10px] text-muted">
+              <p className="mt-4 text-[14px] text-slate">
                 Is the agent running? Start it with{" "}
-                <code className="rounded bg-ink px-1.5 py-0.5 font-mono text-[10px] text-white">
+                <code className="rounded-card bg-fog px-1.5 py-0.5 font-mono text-[14px] text-obsidian">
                   pnpm --filter @agentvault/agent dev
                 </code>
               </p>

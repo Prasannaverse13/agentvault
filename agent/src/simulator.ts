@@ -61,7 +61,7 @@ function scenarioConfig(input: SimInput): { dropPct: number; steps: number; reco
   if (input.scenario === "custom") {
     return { dropPct: input.crashPct ?? 30, steps: input.steps ?? 10, recoverPct: 0 };
   }
-  return { dropPct: input.crashPct ?? 35, steps: input.steps ?? 12, recoverPct: 0 };
+  return { dropPct: input.crashPct ?? 45, steps: input.steps ?? 12, recoverPct: 0 };
 }
 
 export function simulate(input: SimInput): SimResult {
