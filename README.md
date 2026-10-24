@@ -147,27 +147,27 @@ the dashboard never shows a different truth than the contract.
 ```mermaid
 sequenceDiagram
   autonumber
-  participant Loop as Monitor loop
+  participant Mon as Monitor loop
   participant Vault as AgentVault
   participant Mezo as Mezo (TroveManager, BorrowerOps)
   participant Oracle as PriceFeed
   participant Owner as Owner (web / Telegram)
 
   loop every poll interval
-    Loop->>Vault: health()
+    Mon->>Vault: health()
     Vault->>Oracle: fetchPrice()
     Vault->>Mezo: getTroveColl / getTroveDebt / getCurrentICR
-    Vault-->>Loop: coll, debt, price, icr, buffer, reserve
-    Loop->>Loop: decide(position, rules)
+    Vault-->>Mon: coll, debt, price, icr, buffer, reserve
+    Mon->>Mon: decide(position, rules)
     alt ICR >= trigger
-      Loop->>Loop: hold, record history point
+      Mon->>Mon: hold, record history point
     else ICR < trigger and safety funds available
-      Loop->>Vault: protect(repayAmount, topUpAmount)
+      Mon->>Vault: protect(repayAmount, topUpAmount)
       Vault->>Mezo: repayMUSD(...) and addColl(...)
-      Vault-->>Loop: AgentAction(kind, price, icrBefore, icrAfter)
-      Loop->>Owner: toast, Telegram message, activity feed entry
+      Vault-->>Mon: AgentAction(kind, price, icrBefore, icrAfter)
+      Mon->>Owner: toast, Telegram message, activity feed entry
     else ICR < trigger and safety funds empty
-      Loop->>Owner: danger alert, deposit BTC buffer or MUSD reserve
+      Mon->>Owner: danger alert, deposit BTC buffer or MUSD reserve
     end
   end
 ```
