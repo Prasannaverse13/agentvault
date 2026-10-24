@@ -15,6 +15,7 @@ Built for the **Mezo Buildathon, Wave 1 (Track 1: DeFi, with Track 2 Telegram ac
 
 | | |
 |---|---|
+| Live app | **https://agentvault-90fz.onrender.com** (Mezo testnet; the free host sleeps when idle, so the first load can take about a minute) |
 | Chain | Mezo testnet, chain id `31611` (plus a local demo network, chain id `31337`) |
 | MUSD integration | Real Mezo trove via `BorrowerOperations` and `TroveManager`; MUSD reserve repays debt |
 | Live contracts | Factory `0x0Eb2cD465946e7eac309bCF311Dbd2Dd5cc7C31d`, demo vault `0xAbb30839FE657D59b4CBCbB737f4af896c5a8b62` |

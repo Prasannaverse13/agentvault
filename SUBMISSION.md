@@ -9,7 +9,7 @@ Copy these answers into the AKINDO form. Items marked TODO need you.
 | MUSD integration | Done. Real Mezo trove via BorrowerOperations and TroveManager. MUSD reserve repays debt |
 | Working deployment | Done on Mezo testnet (factory + demo vault + 2 real agent txs, re-verified on-chain) |
 | Public GitHub repo | Repo is public. TODO push the latest commits (local main is ahead of origin) |
-| Live project link | TODO deploy the web app (Vercel) and host the agent API somewhere reachable, set NEXT_PUBLIC_AGENT_URL |
+| Live project link | Done: https://agentvault-90fz.onrender.com (one Render free service serves the web app and the agent API). TODO add a free uptime monitor on /api/health so it does not sleep during judging |
 | Project deck | TODO build from the outline below |
 | 2 minute pitch video | TODO record using the script below |
 | AKINDO form | Fill with the answers below |
@@ -32,6 +32,8 @@ MUSD use: the loan itself is MUSD minted from a Mezo trove. The MUSD reserve rep
 **Tech stack:** Solidity (Hardhat), TypeScript, Fastify agent service, viem, Next.js 15, Tailwind, three.js, MetaMask (EIP-6963), Telegram (grammY), optional OpenAI compatible LLM for chat.
 
 **Track:** Track 1 (DeFi: borrowing). Also fits Track 2 through Telegram alerts and a plain language chat.
+
+**Live project link:** https://agentvault-90fz.onrender.com
 
 **Chain deployed on:** Mezo (testnet, chain id 31611)
 
