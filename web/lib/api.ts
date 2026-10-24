@@ -95,6 +95,7 @@ export type AgentHealth = {
   telegram: boolean;
   telegramChat?: boolean;
   llm: boolean;
+  llmModel?: string | null;
   demo?: boolean;
   pollMs?: number;
 };
@@ -137,12 +138,14 @@ export type ChatResponse = {
   rulePatch: { triggerICR: string; targetICR: string; autoProtect: boolean } | null;
   simulate: string | null;
   source: "llm" | "rules";
+  notice?: string;
 };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${AGENT_URL}${path}`, {
     ...init,
-    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
+    // Fastify rejects an empty body that claims to be JSON, so only send the header with a body.
+    headers: { ...(init?.body ? { "content-type": "application/json" } : {}), ...(init?.headers ?? {}) },
     cache: "no-store",
   });
   const text = await response.text();

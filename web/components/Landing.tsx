@@ -2,6 +2,7 @@
 
 import type { useWallet } from "@/lib/useWallet";
 import { cls } from "@/lib/format";
+import { Background3D } from "./Background3D";
 import { Logo } from "./Header";
 import { Badge } from "./ui";
 
@@ -20,7 +21,9 @@ export function Landing({
   const primaryLabel = wallet.address ? "Open a vault" : "Connect wallet";
 
   return (
-    <main>
+    <main className="relative">
+      <Background3D />
+      <div className="relative z-10">
       {/* Hero */}
       <section className="mx-auto max-w-page px-4 pb-4 pt-10 text-center sm:px-6 lg:pt-16">
         <div className="animate-fade-up">
@@ -190,6 +193,7 @@ export function Landing({
           </p>
         </div>
       </footer>
+      </div>
     </main>
   );
 }

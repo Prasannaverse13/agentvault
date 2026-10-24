@@ -43,7 +43,7 @@ export async function readVaultOnChain(vault: Address): Promise<StatusResponse> 
     targetICR: Number(targetICR) / 1e16,
     triggerLTV: ltvFromICR(triggerICR),
     targetLTV: ltvFromICR(targetICR),
-    health: icrPct >= 200 ? "safe" : icrPct >= 150 ? "watch" : "danger",
+    health: Number(status) !== 1 ? "safe" : icrPct >= 200 ? "safe" : icrPct >= 150 ? "watch" : "danger",
     agentConnected: true,
     fetchedAt: Date.now(),
   };

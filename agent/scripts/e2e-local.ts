@@ -170,6 +170,14 @@ async function main() {
 
   await api("/api/demo/price", { method: "POST", body: JSON.stringify({ reset: true }) });
 
+  if (process.env.E2E_KEEP) {
+    // Leave this vault open so it can be explored or chatted with.
+    console.log(`
+Kept vault ${vault} open (E2E_KEEP). ${failures === 0 ? "All checks passed." : `${failures} check(s) failed.`}`);
+    process.exitCode = failures === 0 ? 0 : 1;
+    return;
+  }
+
   const bufferNow = await pub.getBalance({ address: vault });
   if (bufferNow > 0n) {
     await send(

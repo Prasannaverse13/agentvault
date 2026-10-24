@@ -33,6 +33,7 @@ export async function buildServer() {
     telegram: Boolean(config.telegramToken),
     telegramChat: Boolean(config.telegramToken && config.telegramChatId),
     llm: Boolean(config.openaiKey),
+    llmModel: config.openaiKey ? config.openaiModel : null,
     demo: demoEnabled,
     pollMs: config.pollMs,
   }));
@@ -221,6 +222,9 @@ export async function buildServer() {
     }
     try {
       const snapshot = await readVault(vault);
+      if (snapshot.status !== 1 || snapshot.debt === 0n || snapshot.coll === 0n) {
+        return reply.code(400).send({ error: "No active loan to simulate. Open a loan first." });
+      }
       const result = simulate({
         coll: snapshot.coll,
         debt: snapshot.debt,

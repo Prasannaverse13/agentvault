@@ -244,6 +244,22 @@ export default function App() {
     setStatusError(null);
   };
 
+  // Disconnecting (from our menu or from MetaMask itself) returns the user to the landing page.
+  const previousAddress = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (previousAddress.current && !wallet.address) {
+      forgetVault();
+      setVaults([]);
+      setCreateOpen(false);
+      setLoanOpen(false);
+      setWantApp(false);
+      setScreen("landing");
+      window.scrollTo({ top: 0 });
+    }
+    previousAddress.current = wallet.address;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wallet.address]);
+
   const enterApp = () => {
     setWantApp(true);
     if (!wallet.address && !wallet.connecting) void wallet.connect();

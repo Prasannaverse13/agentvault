@@ -17,7 +17,11 @@ export type ChatResponse = {
   rulePatch: RulePatch | null;
   simulate: Scenario | null;
   source: "llm" | "rules";
+  /** Set when an AI key is configured but the model could not answer. */
+  notice?: string;
 };
+
+type LlmResult = { ok: true; response: ChatResponse } | { ok: false; error: string };
 
 const SCENARIOS: Scenario[] = ["crash", "dip", "blackswan"];
 
@@ -45,7 +49,7 @@ function normalizePatch(input: unknown): RulePatch | null {
 async function callLLM(
   message: string,
   context: Record<string, unknown>,
-): Promise<ChatResponse | null> {
+): Promise<LlmResult | null> {
   if (!config.openaiKey) return null;
   const system = [
     "You are AgentVault, an assistant for a BTC-backed MUSD loan on Mezo.",
@@ -60,36 +64,60 @@ async function callLLM(
     "- triggerICR and targetICR are decimal ratios: 1.5 means 150% ICR. 1.1 is the liquidation threshold.",
     "- LTV percent = 100 / ICR. 60% LTV becomes ICR 1.667. Always convert LTV to ICR in rulePatch.",
     "- targetICR must be >= triggerICR and above 1.1.",
-    "- Only return rulePatch when the user asks to change protection rules.",
+    "- Only return rulePatch when the user asks to change, pause or resume protection.",
+    "- When the user asks for a rule change, return the rulePatch immediately. Do not ask for confirmation: the owner reviews and signs it in their wallet.",
+    "- To pause set autoProtect false, to resume set it true. Keep the current triggerICR and targetICR unless the user changes them (position.triggerICR is a percent: 170 means 1.70).",
     "- Only return simulate when the user asks to run, show, or simulate a crash/scenario.",
+    "- Never say a change is already applied: say it is ready and the owner must sign it.",
+    "- You never move funds. The owner signs every rule change in their wallet.",
     "- reply must be under 70 words, concrete, no markdown tables.",
   ].join("\n");
 
-  try {
-    const response = await fetch(`${config.openaiBaseUrl}/chat/completions`, {
+  const messages = [
+    { role: "system", content: system },
+    { role: "user", content: message },
+  ];
+
+  const post = (body: Record<string, unknown>) =>
+    fetch(`${config.openaiBaseUrl}/chat/completions`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${config.openaiKey}`,
       },
-      body: JSON.stringify({
-        model: config.openaiModel,
-        temperature: 0.2,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: message },
-        ],
-      }),
-      signal: AbortSignal.timeout(20_000),
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30_000),
     });
-    if (!response.ok) return null;
+
+  try {
+    // First try with strict JSON output and a low temperature. Some models
+    // reject those parameters, so retry once with the bare minimum.
+    let response = await post({
+      model: config.openaiModel,
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+      messages,
+    });
+    if (response.status === 400) {
+      response = await post({ model: config.openaiModel, messages });
+    }
+    if (!response.ok) {
+      const detail = (await response.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 160);
+      const error = `${config.openaiModel} returned HTTP ${response.status}${detail ? `: ${detail}` : ""}`;
+      console.warn(`[chat] LLM request failed: ${error}`);
+      return { ok: false, error };
+    }
     const json = (await response.json()) as {
       choices?: { message?: { content?: string } }[];
     };
     const content = json.choices?.[0]?.message?.content;
-    if (!content) return null;
-    const parsed = JSON.parse(content.replace(/```json|```/g, "").trim()) as {
+    if (!content) return { ok: false, error: "The model returned an empty answer" };
+
+    // Models sometimes wrap JSON in prose or code fences: take the outermost object.
+    const start = content.indexOf("{");
+    const end = content.lastIndexOf("}");
+    if (start < 0 || end <= start) return { ok: false, error: "The model did not return JSON" };
+    const parsed = JSON.parse(content.slice(start, end + 1)) as {
       reply?: string;
       rulePatch?: unknown;
       simulate?: string;
@@ -99,16 +127,21 @@ async function callLLM(
         ? (parsed.simulate as Scenario)
         : null;
     return {
-      reply:
-        typeof parsed.reply === "string" && parsed.reply.trim()
-          ? parsed.reply.trim()
-          : "I am watching the position and will protect it when your rules are hit.",
-      rulePatch: normalizePatch(parsed.rulePatch),
-      simulate: simulateValue,
-      source: "llm",
+      ok: true,
+      response: {
+        reply:
+          typeof parsed.reply === "string" && parsed.reply.trim()
+            ? parsed.reply.trim()
+            : "I am watching the position and will protect it when your rules are hit.",
+        rulePatch: normalizePatch(parsed.rulePatch),
+        simulate: simulateValue,
+        source: "llm",
+      },
     };
-  } catch {
-    return null;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.warn(`[chat] LLM call threw: ${reason}`);
+    return { ok: false, error: reason.slice(0, 160) };
   }
 }
 
@@ -241,8 +274,14 @@ export async function handleChat(vaultAddress: Address, message: string): Promis
     capabilities: ["set rules", "pause/resume", "simulate crash", "explain risk"],
   };
 
-  const fromLLM = await callLLM(message, context);
-  const response = fromLLM ?? fallback(message, context);
+  const noLoan = vault.status !== 1 || vault.debt === 0n || vault.coll === 0n;
+  const llm = await callLLM(message, { ...context, loanActive: !noLoan });
+  const response: ChatResponse = llm?.ok
+    ? llm.response
+    : {
+        ...fallback(message, context),
+        ...(llm && !llm.ok ? { notice: `AI unavailable, answered with built-in rules. ${llm.error}` } : {}),
+      };
 
   store.add({
     vault: vaultAddress,
@@ -250,6 +289,12 @@ export async function handleChat(vaultAddress: Address, message: string): Promis
     title: message.slice(0, 120),
     detail: response.reply,
   });
+
+  if (response.simulate && noLoan) {
+    // Nothing to stress-test: say so instead of failing inside the simulator.
+    response.simulate = null;
+    response.reply = "There is no active loan on this vault, so there is nothing to simulate. Open a loan first and I can stress-test it.";
+  }
 
   if (response.simulate) {
     const result = simulate({

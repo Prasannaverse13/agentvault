@@ -21,7 +21,8 @@ export function snapshotView(s: VaultSnapshot) {
     targetICR: Number(s.targetICR) / 1e16,
     triggerLTV: ltv(s.triggerICR),
     targetLTV: ltv(s.targetICR),
-    health: icr >= 200 ? "safe" : icr >= 150 ? "watch" : "danger",
+    // A vault with no active loan has nothing at risk.
+    health: s.status !== 1 ? "safe" : icr >= 200 ? "safe" : icr >= 150 ? "watch" : "danger",
     agentConnected:
       !!agentAccount && s.agent.toLowerCase() === agentAccount.address.toLowerCase(),
     fetchedAt: s.fetchedAt,

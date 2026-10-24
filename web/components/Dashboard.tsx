@@ -215,6 +215,7 @@ export function Dashboard({
             isOwner={isOwner}
             runTx={runTx}
             onSimulate={triggerSimulation}
+            llmModel={agent?.llmModel ?? null}
             notify={notify}
           />
         </div>
@@ -893,6 +894,8 @@ type ChatMessage = {
   role: "user" | "agent";
   text: string;
   patch?: ChatResponse["rulePatch"];
+  source?: ChatResponse["source"];
+  notice?: string;
 };
 
 function ChatCard({
@@ -900,8 +903,10 @@ function ChatCard({
   isOwner,
   runTx,
   onSimulate,
+  llmModel,
   notify,
 }: {
+  llmModel: string | null;
   vault: Address;
   isOwner: boolean;
   runTx: (label: string, fn: (client: ConnectedClient) => Promise<Hash>) => Promise<boolean>;
@@ -933,7 +938,13 @@ function ChatCard({
       const response = await api.chat(vault, message);
       setMessages((prev) => [
         ...prev,
-        { role: "agent", text: response.reply, patch: response.rulePatch ?? undefined },
+        {
+          role: "agent",
+          text: response.reply,
+          patch: response.rulePatch ?? undefined,
+          source: response.source,
+          notice: response.notice,
+        },
       ]);
       if (response.simulate) onSimulate(response.simulate);
     } catch (error) {
@@ -964,7 +975,7 @@ function ChatCard({
       <SectionTitle
         title="Talk to the agent"
         subtitle="Natural-language rules. The owner wallet still signs every change."
-        action={<Badge>AI + rules</Badge>}
+        action={<Badge tone={llmModel ? "good" : "default"}>{llmModel ? `AI · ${llmModel}` : "Built-in rules"}</Badge>}
       />
 
       <div className="flex-1 space-y-3 overflow-y-auto pr-1">
@@ -982,6 +993,19 @@ function ChatCard({
               )}
             >
               <p>{message.text}</p>
+              {message.role === "agent" && message.source ? (
+                <p
+                  className={cls(
+                    "mt-1.5 text-[11px] font-semibold",
+                    message.source === "llm" ? "text-good" : "text-slate",
+                  )}
+                >
+                  {message.source === "llm" ? "✦ AI answer" : "Built-in rules"}
+                </p>
+              ) : null}
+              {message.notice ? (
+                <p className="mt-1 rounded-card bg-[#fdf0d5] px-2.5 py-1.5 text-[12px] text-warn">{message.notice}</p>
+              ) : null}
               {message.patch ? (
                 <div className="mt-2 rounded-card border border-[#cfe9bd] bg-mist p-2.5">
                   <p className="text-[14px] text-good">Proposed rules</p>
