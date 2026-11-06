@@ -111,6 +111,38 @@ export const vaultAbi = [
     ],
     outputs: [],
   },
+  // ---- v2 (Wave 2) ----
+  { type: "function", name: "VERSION", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
+  {
+    type: "function",
+    name: "earnInfo",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [
+      { name: "pooledMusd", type: "uint256" },
+      { name: "pendingBtcGain", type: "uint256" },
+      { name: "earnedBtc", type: "uint256" },
+      { name: "feesBtc", type: "uint256" },
+      { name: "feesMusd", type: "uint256" },
+      { name: "surplusClaimed", type: "uint256" },
+      { name: "repayCap", type: "uint256" },
+      { name: "protectFee", type: "uint256" },
+      { name: "performanceFee", type: "uint256" },
+    ],
+  },
+  { type: "function", name: "maxRepay", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "stabilityPool", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+  { type: "function", name: "feeRecipient", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+  { type: "function", name: "earnDeposit", stateMutability: "nonpayable", inputs: [{ name: "amount", type: "uint256" }], outputs: [] },
+  { type: "function", name: "earnWithdraw", stateMutability: "nonpayable", inputs: [{ name: "amount", type: "uint256" }], outputs: [] },
+  { type: "function", name: "harvest", stateMutability: "nonpayable", inputs: [], outputs: [] },
+  { type: "function", name: "claimSurplus", stateMutability: "nonpayable", inputs: [], outputs: [] },
+  { type: "event", name: "EarnDeposited", inputs: [{ name: "by", type: "address", indexed: true }, { name: "amount", type: "uint256" }] },
+  { type: "event", name: "EarnWithdrawn", inputs: [{ name: "by", type: "address", indexed: true }, { name: "musdOut", type: "uint256" }, { name: "btcGain", type: "uint256" }] },
+  { type: "event", name: "EarnUnwindFailed", inputs: [{ name: "requested", type: "uint256" }] },
+  { type: "event", name: "Harvested", inputs: [{ name: "by", type: "address", indexed: true }, { name: "btcGain", type: "uint256" }, { name: "toTrove", type: "uint256" }, { name: "fee", type: "uint256" }] },
+  { type: "event", name: "SurplusClaimed", inputs: [{ name: "by", type: "address", indexed: true }, { name: "to", type: "address", indexed: true }, { name: "amount", type: "uint256" }] },
+  { type: "event", name: "FeePaid", inputs: [{ name: "to", type: "address", indexed: true }, { name: "btcAmount", type: "uint256" }, { name: "musdAmount", type: "uint256" }] },
   { type: "event", name: "LoanOpened", inputs: [{ name: "owner", type: "address", indexed: true }, { name: "coll", type: "uint256" }, { name: "debt", type: "uint256" }] },
   { type: "event", name: "RulesUpdated", inputs: [{ name: "triggerICR", type: "uint256" }, { name: "targetICR", type: "uint256" }, { name: "autoProtect", type: "bool" }] },
   { type: "event", name: "AgentAction", inputs: [{ name: "kind", type: "uint8", indexed: true }, { name: "repayAmount", type: "uint256" }, { name: "topUpAmount", type: "uint256" }, { name: "price", type: "uint256" }, { name: "icrBefore", type: "uint256" }, { name: "icrAfter", type: "uint256" }] },
@@ -139,6 +171,9 @@ export const factoryAbi = [
     outputs: [{ name: "", type: "address[]" }],
   },
   { type: "function", name: "vaultCount", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "stabilityPool", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+  { type: "function", name: "protectFeeBps", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "performanceFeeBps", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
   { type: "event", name: "VaultCreated", inputs: [{ name: "owner", type: "address", indexed: true }, { name: "vault", type: "address", indexed: true }, { name: "agent", type: "address", indexed: true }] },
 ] as const;
 
@@ -170,4 +205,11 @@ export const borrowerOpsAbi = [
 export const mockPriceFeedAbi = [
   { type: "function", name: "fetchPrice", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
   { type: "function", name: "setPrice", stateMutability: "nonpayable", inputs: [{ name: "price_", type: "uint256" }], outputs: [] },
+] as const;
+
+export const stabilityPoolAbi = [
+  { type: "function", name: "getTotalMUSDDeposits", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "getCollateralBalance", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "getCompoundedMUSDDeposit", stateMutability: "view", inputs: [{ name: "_depositor", type: "address" }], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "getDepositorCollateralGain", stateMutability: "view", inputs: [{ name: "_depositor", type: "address" }], outputs: [{ type: "uint256" }] },
 ] as const;

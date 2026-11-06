@@ -38,6 +38,8 @@ async function status(address?: Address): Promise<string> {
         price: vault.price,
         buffer: vault.btcBuffer,
         reserve: vault.musdReserve,
+        pooled: vault.pooledMusd,
+        maxRepay: vault.repayCap,
       },
       {
         triggerICR: vault.triggerICR,
@@ -72,7 +74,7 @@ async function simulateFor(address: Address | undefined, scenario: Scenario): Pr
     debt: vault.debt,
     price: vault.price,
     buffer: vault.btcBuffer,
-    reserve: vault.musdReserve,
+    reserve: vault.musdReserve + vault.pooledMusd,
     rules: {
       triggerICR: vault.triggerICR,
       targetICR: vault.targetICR,

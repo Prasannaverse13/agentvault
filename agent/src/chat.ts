@@ -242,6 +242,22 @@ function fallback(message: string, context: Record<string, unknown>): ChatRespon
     };
   }
 
+  if (/(earn|yield|stability pool|pool|fee|harvest|surplus|redeem|redemption)/.test(text)) {
+    const e = view.earn;
+    const reply = !view.v2
+      ? "This is a Wave 1 vault without Earn. Create a new vault to put the MUSD reserve to work in the Mezo Stability Pool."
+      : [
+          `Your MUSD reserve: ${e.totalReserve.toFixed(2)} MUSD, of which ${e.pooledMusd.toFixed(2)} earns in the Mezo Stability Pool.`,
+          `Lifetime BTC earned from liquidations: ${e.earnedBtc.toFixed(6)} BTC${e.pendingBtcGain > 0 ? `, ${e.pendingBtcGain.toFixed(6)} BTC waiting to be harvested into your loan` : ""}.`,
+          `If the loan needs MUSD, the agent pulls it back out of the pool first.`,
+          `Fees: ${e.protectFeePct}% per protect action and ${e.performanceFeePct}% of pool gains.`,
+          e.surplusClaimed > 0 ? `After a redemption the agent recovered ${e.surplusClaimed.toFixed(6)} BTC for you.` : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
+    return { reply, rulePatch: null, simulate: null, source: "rules" };
+  }
+
   const decision = context.decision as ReturnType<typeof decisionView>;
   return {
     reply: `ICR ${view.icr.toFixed(1)}% (${view.ltv.toFixed(1)}% LTV). ${decision.reason}. You can ask me to set a trigger, pause protection, or run a crash simulation.`,
@@ -260,6 +276,8 @@ export async function handleChat(vaultAddress: Address, message: string): Promis
       price: vault.price,
       buffer: vault.btcBuffer,
       reserve: vault.musdReserve,
+      pooled: vault.pooledMusd,
+      maxRepay: vault.repayCap,
     },
     {
       triggerICR: vault.triggerICR,
@@ -302,7 +320,7 @@ export async function handleChat(vaultAddress: Address, message: string): Promis
       debt: vault.debt,
       price: vault.price,
       buffer: vault.btcBuffer,
-      reserve: vault.musdReserve,
+      reserve: vault.musdReserve + vault.pooledMusd,
       rules: {
         triggerICR: vault.triggerICR,
         targetICR: vault.targetICR,

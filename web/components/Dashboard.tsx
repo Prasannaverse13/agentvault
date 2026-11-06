@@ -23,6 +23,7 @@ import { HistoryChart } from "./HistoryChart";
 import { MarketCard } from "./MarketCard";
 import { NotificationsCard } from "./NotificationsCard";
 import { RiskCard } from "./RiskCard";
+import { EarnCard } from "./EarnCard";
 import {
   Badge,
   Card,
@@ -207,6 +208,7 @@ export function Dashboard({
             runTx={runTx}
             notify={notify}
           />
+          <EarnCard vault={vault} position={position} isOwner={isOwner} runTx={runTx} notify={notify} />
         </div>
 
         <div className="lg:col-span-7">
@@ -348,7 +350,9 @@ function PositionCard({
           <Stat
             label="Safety funds"
             value={`${fmtNum(position.btcBuffer, 3)} BTC`}
-            sub={`${fmtNum(position.musdReserve, 0)} MUSD reserve`}
+            sub={`${fmtNum(position.earn?.totalReserve ?? position.musdReserve, 0)} MUSD reserve${
+              position.earn && position.earn.pooledMusd > 0 ? ` (${fmtNum(position.earn.pooledMusd, 0)} earning)` : ""
+            }`}
           />
         </div>
       </div>

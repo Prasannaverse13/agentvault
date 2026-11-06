@@ -48,6 +48,11 @@ export const config = {
   openaiKey: process.env.OPENAI_API_KEY || undefined,
   openaiBaseUrl: (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, ""),
   openaiModel: process.env.OPENAI_MODEL || "gpt-4o-mini",
+  /** v2: keep this share of the MUSD reserve liquid; the rest earns in the Stability Pool. */
+  autoEarn: (process.env.AGENT_AUTO_EARN ?? "true") !== "false",
+  earnKeepLiquidPct: Math.min(100, Math.max(0, Number(process.env.EARN_KEEP_LIQUID_PCT ?? 30))),
+  /** v2: harvest Stability Pool BTC gains once they reach this many BTC. */
+  harvestMinBtc: Number(process.env.HARVEST_MIN_BTC ?? 0.0001),
   publicUrl: process.env.PUBLIC_APP_URL || "http://localhost:3000",
 };
 

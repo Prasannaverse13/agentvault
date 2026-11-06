@@ -9,6 +9,8 @@ contract MockBorrowerOperations {
     MockTroveManager public immutable troveManager;
     uint256 public minNetDebt = 50e18;
     uint256 public borrowingFeeBps;
+    uint256 public constant MUSD_GAS_COMPENSATION = 200e18;
+    mapping(address => uint256) public surplus;
 
     constructor(address musd_, address troveManager_) {
         musd = MockMUSD(musd_);
@@ -57,6 +59,12 @@ contract MockBorrowerOperations {
     }
 
     function repayMUSD(uint256 amount, address, address) external {
+        uint256 debt = troveManager.getTroveDebt(msg.sender);
+        require(
+            debt >= MUSD_GAS_COMPENSATION + amount &&
+                debt - MUSD_GAS_COMPENSATION - amount >= minNetDebt,
+            "BorrowerOps: Trove's net debt must be greater than minimum"
+        );
         musd.burn(msg.sender, amount);
         troveManager.subDebt(msg.sender, amount);
     }
@@ -67,6 +75,26 @@ contract MockBorrowerOperations {
         if (debt > 0) musd.burn(msg.sender, debt);
         troveManager.setTrove(msg.sender, 0, 0, 2);
         (bool ok, ) = payable(msg.sender).call{value: coll}("");
+        require(ok, "mock: btc send failed");
+    }
+
+    function setMinNetDebt(uint256 v) external {
+        minNetDebt = v;
+    }
+
+    /// @notice Simulate a full redemption of a trove: its debt is paid off by
+    ///         redeemers, the trove closes (status 4) and the leftover BTC waits
+    ///         in the surplus pool. Send the surplus BTC with this call.
+    function simulateRedemption(address borrower) external payable {
+        troveManager.setTrove(borrower, 0, 0, 4);
+        surplus[borrower] += msg.value;
+    }
+
+    function claimCollateral() external {
+        uint256 amount = surplus[msg.sender];
+        require(amount > 0, "CollSurplusPool: No collateral available to claim");
+        surplus[msg.sender] = 0;
+        (bool ok, ) = payable(msg.sender).call{value: amount}("");
         require(ok, "mock: btc send failed");
     }
 

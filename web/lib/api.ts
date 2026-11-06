@@ -25,7 +25,24 @@ export type PositionView = {
   targetLTV: number;
   health: "safe" | "watch" | "danger";
   agentConnected: boolean;
+  /** v2 (Wave 2) vaults: Earn, fees and limits. Missing or zero on a Wave 1 vault. */
+  v2?: boolean;
+  earn?: EarnView;
+  redeemed?: boolean;
   fetchedAt: number;
+};
+
+export type EarnView = {
+  pooledMusd: number;
+  totalReserve: number;
+  pendingBtcGain: number;
+  earnedBtc: number;
+  feesBtc: number;
+  feesMusd: number;
+  surplusClaimed: number;
+  repayCap: number | null;
+  protectFeePct: number;
+  performanceFeePct: number;
 };
 
 export type DecisionView = {

@@ -102,6 +102,8 @@ export async function buildServer() {
           price: snapshot.price,
           buffer: snapshot.btcBuffer,
           reserve: snapshot.musdReserve,
+          pooled: snapshot.pooledMusd,
+          maxRepay: snapshot.repayCap,
         },
         {
           triggerICR: snapshot.triggerICR,
@@ -147,7 +149,7 @@ export async function buildServer() {
         debt: s.debt,
         price: s.price,
         buffer: s.btcBuffer,
-        reserve: s.musdReserve,
+        reserve: s.musdReserve + s.pooledMusd,
         rules: { triggerICR: s.triggerICR, targetICR: s.targetICR, autoProtect: s.autoProtect },
       });
     } catch (error) {
@@ -249,7 +251,7 @@ export async function buildServer() {
         debt: snapshot.debt,
         price: snapshot.price,
         buffer: snapshot.btcBuffer,
-        reserve: snapshot.musdReserve,
+        reserve: snapshot.musdReserve + snapshot.pooledMusd,
         rules: {
           triggerICR: snapshot.triggerICR,
           targetICR: snapshot.targetICR,

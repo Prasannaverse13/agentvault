@@ -14,6 +14,8 @@
     "demo:setup": "pnpm --filter @agentvault/agent exec tsx scripts/setup-demo.ts",
     "demo:stress": "pnpm --filter @agentvault/agent exec tsx scripts/stress-demo.ts",
     "demo:fund": "pnpm --filter @agentvault/agent exec tsx scripts/fund-agent.ts",
+    "demo:wave2": "pnpm --filter @agentvault/agent exec tsx scripts/wave2-proof.ts",
+    "contracts:verify": "pnpm --filter @agentvault/contracts verify:testnet",
     "demo:transfer": "pnpm --filter @agentvault/agent exec tsx scripts/transfer.ts",
     "typecheck": "pnpm --filter @agentvault/shared build && pnpm --filter @agentvault/agent build && pnpm --filter @agentvault/web build",
     "demo": "node scripts/demo.mjs",

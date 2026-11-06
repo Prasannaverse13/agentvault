@@ -6,6 +6,7 @@
     "build": "hardhat compile",
     "test": "hardhat test",
     "deploy:testnet": "hardhat run scripts/deploy.ts --network mezoTestnet",
+    "verify:testnet": "hardhat run scripts/verify.ts --network mezoTestnet",
     "deploy:local": "hardhat run scripts/deploy.ts --network hardhat",
     "node": "hardhat node"
   },

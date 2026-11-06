@@ -9,7 +9,7 @@ import type { DecisionView, PositionView, StatusResponse } from "./api";
  * unreachable, so the dashboard still shows the truth.
  */
 export async function readVaultOnChain(vault: Address): Promise<StatusResponse> {
-  const [health, owner, agent, autoProtect, triggerICR, targetICR, liquidationPrice] =
+  const [health, owner, agent, autoProtect, triggerICR, targetICR, liquidationPrice, earnRaw] =
     await Promise.all([
       publicClient.readContract({ address: vault, abi: vaultAbi, functionName: "health" }),
       publicClient.readContract({ address: vault, abi: vaultAbi, functionName: "owner" }),
@@ -20,7 +20,13 @@ export async function readVaultOnChain(vault: Address): Promise<StatusResponse> 
       publicClient
         .readContract({ address: vault, abi: vaultAbi, functionName: "liquidationPrice" })
         .catch(() => 0n),
+      // Wave 1 vaults have no earnInfo(); they read as "no Earn".
+      publicClient
+        .readContract({ address: vault, abi: vaultAbi, functionName: "earnInfo" })
+        .catch(() => null),
     ]);
+  const [pooled, pendingGain, earnedBtc, feesBtc, feesMusd, surplusClaimed, repayCap, protectFee, performanceFee] =
+    (earnRaw ?? [0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]) as readonly bigint[];
 
   const [coll, debt, price, icr, status, btcBuffer, musdReserve] = health as readonly bigint[];
   const icrPct = Number(icr) / 1e16;
@@ -45,6 +51,20 @@ export async function readVaultOnChain(vault: Address): Promise<StatusResponse> 
     targetLTV: ltvFromICR(targetICR),
     health: Number(status) !== 1 ? "safe" : icrPct >= 200 ? "safe" : icrPct >= 150 ? "watch" : "danger",
     agentConnected: true,
+    v2: earnRaw !== null,
+    earn: {
+      pooledMusd: Number(pooled) / 1e18,
+      totalReserve: Number(musdReserve + pooled) / 1e18,
+      pendingBtcGain: Number(pendingGain) / 1e18,
+      earnedBtc: Number(earnedBtc) / 1e18,
+      feesBtc: Number(feesBtc) / 1e18,
+      feesMusd: Number(feesMusd) / 1e18,
+      surplusClaimed: Number(surplusClaimed) / 1e18,
+      repayCap: earnRaw ? Number(repayCap) / 1e18 : null,
+      protectFeePct: Number(protectFee) / 100,
+      performanceFeePct: Number(performanceFee) / 100,
+    },
+    redeemed: Number(status) === 4,
     fetchedAt: Date.now(),
   };
 
@@ -55,6 +75,8 @@ export async function readVaultOnChain(vault: Address): Promise<StatusResponse> 
       price,
       buffer: btcBuffer,
       reserve: musdReserve,
+      pooled,
+      maxRepay: earnRaw ? repayCap : undefined,
     },
     { triggerICR, targetICR, autoProtect },
   );

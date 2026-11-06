@@ -51,6 +51,9 @@ async function send(hash: `0x${string}`) {
   if (receipt.status !== "success") throw new Error(`tx ${hash} reverted`);
 }
 
+const isProtect = (e: { type: string; title?: string }) =>
+  e.type === "execution" && (e.title ?? "").startsWith("Agent protected");
+
 async function main() {
   const health = await api<{ demo: boolean; agent: string }>("/api/health");
   check("agent reports demo network", health.demo === true);
@@ -115,12 +118,32 @@ async function main() {
   await api("/api/watch", { method: "POST", body: JSON.stringify({ vault }) });
 
   type Status = {
-    position: { icr: number; coll: number; debt: number; btcBuffer: number; musdReserve: number; price: number };
-    events: { type: string; txHash?: string }[];
+    position: {
+      icr: number;
+      coll: number;
+      debt: number;
+      btcBuffer: number;
+      musdReserve: number;
+      price: number;
+      v2?: boolean;
+      earn?: { pooledMusd: number; totalReserve: number; repayCap: number | null };
+    };
+    events: { type: string; title?: string; txHash?: string }[];
   };
   const before = await api<Status>(`/api/status/${vault}`);
   check("loan is healthy at the start", before.position.icr > 190, `ICR ${before.position.icr.toFixed(1)}%`);
-  check("safety funds are in the vault", before.position.btcBuffer > 0.2 && before.position.musdReserve > 4000);
+  const totalReserve = before.position.earn?.totalReserve ?? before.position.musdReserve;
+  check("safety funds are in the vault", before.position.btcBuffer > 0.2 && totalReserve > 4000);
+  check("v2 vault reports Earn and the repay cap", before.position.v2 === true && (before.position.earn?.repayCap ?? 0) > 0);
+
+  // v2: the agent keeps 30% of the reserve liquid and puts the rest in the Stability Pool.
+  await api(`/api/check/${vault}`, { method: "POST", body: "{}" });
+  let pooled = 0;
+  for (let i = 0; i < 10 && pooled === 0; i += 1) {
+    await sleep(1000);
+    pooled = (await api<Status>(`/api/status/${vault}`)).position.earn?.pooledMusd ?? 0;
+  }
+  check("agent moved idle MUSD into the Stability Pool", pooled > 3000, `${pooled.toFixed(0)} MUSD pooled`);
 
   const riskBefore = await api<{ survivableDropWithAgent: number; dropToLiquidation: number; band: string }>(
     `/api/risk/${vault}`,
@@ -142,9 +165,9 @@ async function main() {
   for (let i = 0; i < 25; i += 1) {
     await sleep(1500);
     after = await api<Status>(`/api/status/${vault}`);
-    if (after.events.some((e) => e.type === "execution")) break;
+    if (after.events.some(isProtect)) break;
   }
-  const execution = after.events.find((e) => e.type === "execution");
+  const execution = after.events.find(isProtect);
   check("agent executed protect() on-chain", Boolean(execution?.txHash), execution?.txHash?.slice(0, 12));
   check(
     "collateral or debt improved",
@@ -152,6 +175,11 @@ async function main() {
     `coll ${before.position.coll}->${after.position.coll}, debt ${before.position.debt}->${after.position.debt}`,
   );
   check("ICR restored above the trigger", after.position.icr > 166, `ICR ${after.position.icr.toFixed(1)}%`);
+  check(
+    "protect() drew on the pooled reserve",
+    (after.position.earn?.pooledMusd ?? 0) < pooled,
+    `${pooled.toFixed(0)} -> ${(after.position.earn?.pooledMusd ?? 0).toFixed(0)} MUSD pooled`,
+  );
 
   const hist = await api<{ points: unknown[] }>(`/api/history/${vault}`);
   check("health history is being recorded", hist.points.length > 0, `${hist.points.length} points`);
@@ -192,13 +220,29 @@ Kept vault ${vault} open (E2E_KEEP). ${failures === 0 ? "All checks passed." : `
   check("BTC buffer withdrawn", (await pub.getBalance({ address: vault })) === 0n);
 
   const debt = (await pub.readContract({ address: vault, abi: vaultAbi, functionName: "health" }))[1];
-  const reserve = await pub.readContract({
+  const liquid = await pub.readContract({
     address: CORE.MUSD,
     abi: erc20Abi,
     functionName: "balanceOf",
     args: [vault],
   });
+  // v2: closeLoan() pulls the pooled MUSD back itself.
+  const pooledNow = (await pub.readContract({ address: vault, abi: vaultAbi, functionName: "earnInfo" }))[0];
+  const reserve = liquid + pooledNow;
   const missing = debt > reserve ? debt - reserve : 0n;
+  // Protect fees (0.5%) leave the owner slightly short of the full debt. On the
+  // demo network the mock MUSD is freely mintable, so cover the gap.
+  const ownerMusd = await pub.readContract({ address: CORE.MUSD, abi: erc20Abi, functionName: "balanceOf", args: [owner.address] });
+  if (missing > ownerMusd) {
+    await send(
+      await wallet.writeContract({
+        address: CORE.MUSD,
+        abi: [{ type: "function", name: "mint", stateMutability: "nonpayable", inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }], outputs: [] }] as const,
+        functionName: "mint",
+        args: [owner.address, missing - ownerMusd],
+      }),
+    );
+  }
   if (missing > 0n) {
     await send(
       await wallet.writeContract({
@@ -220,6 +264,9 @@ Kept vault ${vault} open (E2E_KEEP). ${failures === 0 ? "All checks passed." : `
   await send(await wallet.writeContract({ address: vault, abi: vaultAbi, functionName: "closeLoan" }));
   const closed = await pub.readContract({ address: vault, abi: vaultAbi, functionName: "health" });
   check("loan closed and trove status is 2", Number(closed[4]) === 2);
+  const earn = await pub.readContract({ address: vault, abi: vaultAbi, functionName: "earnInfo" });
+  check("closing pulled every pooled MUSD back", earn[0] === 0n);
+  check("protect fee went to the treasury", earn[4] > 0n, `${Number(earn[4]) / 1e18} MUSD`);
 
   console.log(failures === 0 ? "\nAll checks passed." : `\n${failures} check(s) failed.`);
   process.exitCode = failures === 0 ? 0 : 1;

@@ -15,8 +15,24 @@ export type Position = {
   debt: bigint;
   price: bigint;
   buffer: bigint;
+  /** Liquid MUSD sitting in the vault. */
   reserve: bigint;
+  /** v2: MUSD the vault keeps in the Mezo Stability Pool. protect() unwinds it. */
+  pooled?: bigint;
+  /** v2: largest repay that keeps the trove at Mezo's minimum net debt. */
+  maxRepay?: bigint;
 };
+
+/** Mezo keeps 200 MUSD of gas compensation inside every trove's debt. */
+export const MUSD_GAS_COMPENSATION = 200n * 10n ** 18n;
+/** Mezo's minimum net debt (BorrowerOperations.minNetDebt) on testnet and mainnet. */
+export const MIN_NET_DEBT = 1800n * 10n ** 18n;
+
+/** Largest repay Mezo accepts before the trove would fall under its minimum debt. */
+export function repayCap(debt: bigint, minNetDebt: bigint = MIN_NET_DEBT): bigint {
+  const floor = minNetDebt + MUSD_GAS_COMPENSATION;
+  return debt > floor ? debt - floor : 0n;
+}
 
 export type Rules = {
   triggerICR: bigint;
@@ -51,7 +67,9 @@ export function ltv(icr: bigint): number {
 }
 
 export function decide(position: Position, rules: Rules): Decision {
-  const { coll, debt, price, buffer, reserve } = position;
+  const { coll, debt, price, buffer } = position;
+  const reserve = position.reserve + (position.pooled ?? 0n);
+  const cap = position.maxRepay ?? repayCap(debt);
   const icr = icrOf(coll, debt, price);
 
   if (debt === 0n || coll === 0n) {
@@ -94,7 +112,9 @@ export function decide(position: Position, rules: Rules): Decision {
   const collAfterTopUp = coll + topUpAmount;
   const targetDebt = (collAfterTopUp * price) / rules.targetICR;
   const deficitDebt = debt > targetDebt ? debt - targetDebt : 0n;
-  const repayAmount = deficitDebt < reserve ? deficitDebt : reserve;
+  let repayAmount = deficitDebt < reserve ? deficitDebt : reserve;
+  // Never ask for more than Mezo allows: it would revert at the min-debt check.
+  if (repayAmount > cap) repayAmount = cap;
 
   let kind: DecisionKind = "hold";
   if (topUpAmount > 0n && repayAmount > 0n) kind = "both";
@@ -110,7 +130,10 @@ export function decide(position: Position, rules: Rules): Decision {
       repayAmount: 0n,
       icr,
       projectedICR: icr,
-      reason: `Danger: ICR ${formatPct(icr)} is below trigger but the BTC buffer and MUSD reserve are empty`,
+      reason:
+        reserve > 0n && cap === 0n && buffer === 0n
+          ? `Danger: ICR ${formatPct(icr)} is below trigger, the loan is at Mezo's minimum debt and the BTC buffer is empty`
+          : `Danger: ICR ${formatPct(icr)} is below trigger but the BTC buffer and MUSD reserve are empty`,
     };
   }
 
@@ -120,7 +143,9 @@ export function decide(position: Position, rules: Rules): Decision {
     repayAmount,
     icr,
     projectedICR,
-    reason: `ICR ${formatPct(icr)} fell below ${formatPct(rules.triggerICR)}; restore toward ${formatPct(rules.targetICR)}`,
+    reason: `ICR ${formatPct(icr)} fell below ${formatPct(rules.triggerICR)}; restore toward ${formatPct(rules.targetICR)}${
+      repayAmount > position.reserve ? " (unwinding Stability Pool MUSD)" : ""
+    }`,
   };
 }
 

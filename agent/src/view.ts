@@ -25,6 +25,21 @@ export function snapshotView(s: VaultSnapshot) {
     health: s.status !== 1 ? "safe" : icr >= 200 ? "safe" : icr >= 150 ? "watch" : "danger",
     agentConnected:
       !!agentAccount && s.agent.toLowerCase() === agentAccount.address.toLowerCase(),
+    // v2: Earn, fees and limits (zero on a Wave 1 vault).
+    v2: s.v2,
+    earn: {
+      pooledMusd: Number(s.pooledMusd) / 1e18,
+      totalReserve: Number(s.musdReserve + s.pooledMusd) / 1e18,
+      pendingBtcGain: Number(s.pendingBtcGain) / 1e18,
+      earnedBtc: Number(s.earnedBtc) / 1e18,
+      feesBtc: Number(s.feesBtc) / 1e18,
+      feesMusd: Number(s.feesMusd) / 1e18,
+      surplusClaimed: Number(s.surplusClaimed) / 1e18,
+      repayCap: s.repayCap === undefined ? null : Number(s.repayCap) / 1e18,
+      protectFeePct: Number(s.protectFeeBps) / 100,
+      performanceFeePct: Number(s.performanceFeeBps) / 100,
+    },
+    redeemed: s.status === 4,
     fetchedAt: s.fetchedAt,
   };
 }

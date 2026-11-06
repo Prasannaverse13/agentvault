@@ -26,6 +26,21 @@ const config: HardhatUserConfig = {
       accounts,
     },
   },
+  // Mezo explorer (Blockscout) verification, same endpoints Mezo uses in mezo-org/musd.
+  etherscan: {
+    apiKey: { mezoTestnet: "empty" },
+    customChains: [
+      {
+        network: "mezoTestnet",
+        chainId: 31611,
+        urls: {
+          apiURL: "https://api.explorer.test.mezo.org/api",
+          browserURL: "https://explorer.test.mezo.org",
+        },
+      },
+    ],
+  },
+  sourcify: { enabled: false },
   paths: {
     sources: "./contracts",
     tests: "./test",

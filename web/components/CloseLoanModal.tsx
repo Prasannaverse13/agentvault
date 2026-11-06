@@ -52,7 +52,8 @@ export function CloseLoanModal({
   }, [open, owner, position.fetchedAt]);
 
   const debt = position.debt;
-  const reserve = position.musdReserve;
+  // v2: closeLoan() pulls pooled MUSD out of the Stability Pool by itself.
+  const reserve = position.earn?.totalReserve ?? position.musdReserve;
   const missing = Math.max(0, debt - reserve);
   const missingWei = parseEther(missing.toFixed(6));
   const canCover = walletMusd !== null && walletMusd + 1e-6 >= missing;

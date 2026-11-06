@@ -9,6 +9,7 @@ const EXPECTED = {
   TROVE_MANAGER: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
   BORROWER_OPERATIONS: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
   FACTORY: "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+  STABILITY_POOL: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
 };
 
 const START_PRICE = ethers.parseEther("80000");
@@ -34,12 +35,19 @@ async function main() {
     await musd.getAddress(),
     await troveManager.getAddress(),
   ]);
+  // The Stability Pool is deployed right after the factory (nonce 5), so the
+  // factory can be built with its address and keep its old deterministic slot.
   const factory = await ethers.deployContract("AgentVaultFactory", [
     await musd.getAddress(),
     await borrowerOps.getAddress(),
     await troveManager.getAddress(),
     await feed.getAddress(),
+    EXPECTED.STABILITY_POOL,
+    deployer.address, // fee recipient on the demo network
+    50, // 0.5% per protect action
+    1_000, // 10% of Stability Pool BTC gains
   ]);
+  const pool = await ethers.deployContract("MockStabilityPool", [await musd.getAddress()]);
 
   const actual = {
     PRICE_FEED: await feed.getAddress(),
@@ -47,6 +55,7 @@ async function main() {
     TROVE_MANAGER: await troveManager.getAddress(),
     BORROWER_OPERATIONS: await borrowerOps.getAddress(),
     FACTORY: await factory.getAddress(),
+    STABILITY_POOL: await pool.getAddress(),
   };
 
   for (const [name, expected] of Object.entries(EXPECTED)) {
@@ -70,7 +79,9 @@ async function main() {
           BORROWER_OPERATIONS: actual.BORROWER_OPERATIONS,
           TROVE_MANAGER: actual.TROVE_MANAGER,
           PRICE_FEED: actual.PRICE_FEED,
+          STABILITY_POOL: actual.STABILITY_POOL,
         },
+        fees: { protectFeeBps: 50, performanceFeeBps: 1000, recipient: deployer.address },
         deployer: deployer.address,
         startPrice: "80000",
       },
