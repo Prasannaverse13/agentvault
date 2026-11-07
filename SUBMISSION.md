@@ -7,12 +7,12 @@ Wave 2 deadline on AKINDO: **Nov 13, 11:00**. Copy these answers into the AKINDO
 | Item | Status |
 |---|---|
 | Judge feedback addressed (Stability Pool reserve, claimCollateral, min debt cap, verify, deck, revenue) | Done in code, 23 contract tests + 20 end-to-end checks passing |
-| Deploy v2 factory on Mezo testnet | TODO `pnpm contracts:deploy` |
-| Verify factory on explorer.test.mezo.org | TODO `pnpm contracts:verify` |
-| Wave 2 proof transactions | TODO `pnpm demo:wave2`, then paste hashes from `contracts/deployments/wave2-proof.json` below |
+| Deploy v2 factory on Mezo testnet | Done: [0x2a8Bfbd24D5E2864abd1D97d9067a343903C0dB0](https://explorer.test.mezo.org/address/0x2a8Bfbd24D5E2864abd1D97d9067a343903C0dB0) |
+| Verify factory on explorer.test.mezo.org | TODO: the API verify failed, use the explorer page with Standard JSON Input |
+| Wave 2 proof transactions | Done, see Proof on Mezo testnet below |
 | Verify the demo vault | TODO `VAULTS=<vault> pnpm contracts:verify` |
 | Update Render env (`FACTORY_ADDRESS`, `NEXT_PUBLIC_FACTORY_ADDRESS`, `AGENT_VAULTS`) and redeploy | TODO |
-| Push to GitHub (repo must stay public) | TODO |
+| Push to GitHub (repo must stay public) | Done on branch `wave2`, merge into main before submitting |
 | Pitch deck | Linked on AKINDO |
 | New 2 minute video (what changed) | TODO |
 | Team info with X or LinkedIn | TODO |
@@ -30,13 +30,18 @@ Wave 2 answers every point from the Wave 1 review.
 
 4. Revenue model. 0.5% of each rescue and 10% of Stability Pool gains, to a treasury fixed at deploy. Hard caps in the contract (1% and 20%). A failing fee transfer never blocks a rescue.
 
-5. Verified contracts on the Mezo explorer, and a pitch deck.
+5. A pitch deck, and contract verification on the Mezo explorer.
 
-Also: closeLoan() unwinds the pool to pay the debt, the agent serializes its transactions (fixed a nonce race), a new Earn card in the dashboard, the chat explains Earn and fees. Wave 1 vaults keep working.
+Also: agent writes carry a gas margin because Mezo's trove list search costs 6M+ gas on testnet (found when a live rescue ran out of gas), closeLoan() unwinds the pool to pay the debt, the agent serializes its transactions (fixed a nonce race), a new Earn card in the dashboard, the chat explains Earn and fees. Wave 1 vaults keep working.
 
 Tests: 23 contract tests (8 in Wave 1), 20 end-to-end checks on a live local chain with the real agent, all passing.
 
-Proof on Mezo testnet: <PASTE FACTORY, VAULT AND TX LINKS FROM wave2-proof.json>
+Proof on Mezo testnet:
+Factory v2: https://explorer.test.mezo.org/address/0x2a8Bfbd24D5E2864abd1D97d9067a343903C0dB0
+Demo vault: https://explorer.test.mezo.org/address/0x80857B7A0BA8D77cFc0F0c3197F6D4c8F72C58f1
+420 MUSD into the Stability Pool: https://explorer.test.mezo.org/tx/0xb0d3d2007e8652d4290498dde9cbb794bedab5d2b1d32e2a85c7691df8af13f1
+Rescue from buffer and liquid MUSD, ICR 118.7% to 139.9%: https://explorer.test.mezo.org/tx/0xaf152f1a7b504268c6b11f9cd9e512518889b9dd6f26c38e9f103d6d1bb51fb3
+Rescue that unwinds the pool, ICR 122.8% to 140.0%, pool 420 to 111.9 MUSD: https://explorer.test.mezo.org/tx/0x6187a2831624ccc2804d6b2146da0cd3f095568d7fac82b5940876b13e4cc0c0
 Live app: https://agentvault-90fz.onrender.com/
 Code: https://github.com/Prasannaverse13/agentvault
 Video: <NEW VIDEO LINK>
