@@ -77,16 +77,21 @@ async function main() {
   const e0 = await earn();
   console.log(`Now: ICR ${pct(h0.icr)}  buffer ${formatEther(h0.buffer)} BTC  liquid ${formatEther(h0.reserve)} MUSD  pooled ${formatEther(e0.pooled)} MUSD`);
 
-  const targetDrop = (TRIGGER * 95n) / 100n;
-  const debtAtTarget = (h0.coll * h0.price) / targetDrop;
-  const auto = debtAtTarget > h0.debt ? debtAtTarget - h0.debt : parseEther("100");
-  // Mezo caps borrowing at the loan's maxBorrowingCapacity, so BORROW can lower the amount.
-  const borrow = env.BORROW ? parseEther(env.BORROW) : auto;
-  await step(
-    `borrow ${formatEther(borrow).slice(0, 8)} MUSD more (ICR below ${pct(TRIGGER)})`,
-    () => ownerWallet.writeContract({ address: vault, abi: vaultAbi, functionName: "borrowMore", args: [borrow] }),
-    async () => (await health()).debt > h0.debt,
-  );
+  if (env.SKIP_BORROW) {
+    console.log("SKIP_BORROW set: using the vault as it is.");
+  } else {
+    const targetDrop = (TRIGGER * 95n) / 100n;
+    const debtAtTarget = (h0.coll * h0.price) / targetDrop;
+    const auto = debtAtTarget > h0.debt ? debtAtTarget - h0.debt : parseEther("100");
+    // Mezo caps borrowing at the loan's maxBorrowingCapacity, so BORROW can lower the amount.
+    const borrow = env.BORROW ? parseEther(env.BORROW) : auto;
+    await step(
+      `borrow ${formatEther(borrow).slice(0, 8)} MUSD more (ICR below ${pct(TRIGGER)})`,
+      () => ownerWallet.writeContract({ address: vault, abi: vaultAbi, functionName: "borrowMore", args: [borrow] }),
+      async () => (await health()).debt > h0.debt,
+    );
+
+  }
 
   const s = await health();
   const e = await earn();
