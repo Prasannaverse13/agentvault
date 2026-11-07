@@ -273,18 +273,6 @@ describe("AgentVault", () => {
         .withArgs(1, 0, BTC("0.2"), USD("26000"), ICR("1.3"), ICR("1.56"));
     });
 
-    it("a pool that burns all gas cannot stop the rescue", async () => {
-      const { owner, agent, vault, feed, pool } = await loadFixture(pooledFixture);
-      await owner.sendTransaction({ to: await vault.getAddress(), value: BTC("0.25") });
-      await pool.setBurnGas(true);
-      await feed.setPrice(USD("26000"));
-
-      // A tight gas limit: without the unwind gas cap the pool eats 63/64 of it.
-      await expect(vault.connect(agent).protect(USD("5000"), BTC("0.2"), { gasLimit: 1_900_000 }))
-        .to.emit(vault, "EarnUnwindFailed")
-        .and.to.emit(vault, "AgentAction");
-    });
-
     it("harvest() turns liquidation gains into collateral", async () => {
       const { agent, vault, pool, troveManager } = await loadFixture(pooledFixture);
       const v = await vault.getAddress();

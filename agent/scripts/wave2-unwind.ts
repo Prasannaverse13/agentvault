@@ -98,8 +98,8 @@ async function main() {
   console.log(`decision: ${d.reason}`);
   await step(
     "agent protect() unwinds the Stability Pool",
-    () => agentWallet.writeContract({ address: vault, abi: vaultAbi, functionName: "protect", args: [d.repayAmount, d.topUpAmount] }),
-    async () => (await health()).icr > s.icr,
+    () => agentWallet.writeContract({ address: vault, abi: vaultAbi, functionName: "protect", args: [d.repayAmount, d.topUpAmount], gas: 10_000_000n }),
+    async () => (await health()).debt < s.debt,
     d.reason,
   );
 

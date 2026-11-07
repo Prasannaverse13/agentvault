@@ -37,9 +37,6 @@ contract AgentVault is ReentrancyGuard {
     uint256 public constant BPS = 10_000;
     uint256 public constant MAX_PROTECT_FEE_BPS = 100; // 1%
     uint256 public constant MAX_PERFORMANCE_FEE_BPS = 2_000; // 20%
-    /// @dev Gas given to a Stability Pool unwind inside protect(). A pool that
-    ///      misbehaves or burns gas can never eat the rescue.
-    uint256 public constant UNWIND_GAS = 1_500_000;
 
     uint8 internal constant STATUS_ACTIVE = 1;
 
@@ -432,7 +429,7 @@ contract AgentVault is ReentrancyGuard {
         ) {
             // Unwind just what is missing. Mezo blocks pool withdrawals while
             // any trove is below MCR; then we fall back to buffer and liquid.
-            try this.unwindForProtect{gas: UNWIND_GAS}(musdNeeded - liquid) {} catch {
+            try this.unwindForProtect(musdNeeded - liquid) {} catch {
                 emit EarnUnwindFailed(musdNeeded - liquid);
             }
             liquid = musd.balanceOf(address(this));

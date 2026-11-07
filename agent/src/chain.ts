@@ -189,6 +189,16 @@ export async function protectVault(
   return serialized(() => protectVaultNow(vault, repayAmount, topUpAmount));
 }
 
+/**
+ * Mezo walks its trove list when a vault passes empty position hints, which
+ * costs 6M+ gas and can move between the estimate and the real run. Gas on
+ * Mezo is almost free, so every write gets a 60% margin on the estimate.
+ */
+async function gasWithMargin(params: Parameters<typeof publicClient.estimateContractGas>[0]): Promise<bigint> {
+  const estimate = await publicClient.estimateContractGas(params);
+  return (estimate * 160n) / 100n;
+}
+
 async function protectVaultNow(
   vault: Address,
   repayAmount: bigint,
@@ -205,9 +215,16 @@ async function protectVaultNow(
     functionName: "protect",
     args: [repayAmount, topUpAmount],
   });
+  const gas = await gasWithMargin({
+    account: agentAccount,
+    address: vault,
+    abi: vaultAbi,
+    functionName: "protect",
+    args: [repayAmount, topUpAmount],
+  });
 
   const before = await readVault(vault);
-  const hash = await walletClient.writeContract(request);
+  const hash = await walletClient.writeContract({ ...request, gas });
   await waitForTx(hash, async () => {
     const now = await readVault(vault);
     return now.coll > before.coll || now.debt < before.debt || now.pooledMusd < before.pooledMusd;
@@ -249,7 +266,8 @@ async function vaultWriteNow(
       functionName,
       args: [amount ?? 0n],
     });
-    hash = await walletClient.writeContract(request);
+    const gas = await gasWithMargin({ account: agentAccount, address: vault, abi: vaultAbi, functionName, args: [amount ?? 0n] });
+    hash = await walletClient.writeContract({ ...request, gas });
   } else {
     const { request } = await publicClient.simulateContract({
       account: agentAccount,
@@ -257,7 +275,8 @@ async function vaultWriteNow(
       abi: vaultAbi,
       functionName,
     });
-    hash = await walletClient.writeContract(request);
+    const gas = await gasWithMargin({ account: agentAccount, address: vault, abi: vaultAbi, functionName });
+    hash = await walletClient.writeContract({ ...request, gas });
   }
   await waitForTx(hash, async () => confirm(before, await readVault(vault)));
   return hash;

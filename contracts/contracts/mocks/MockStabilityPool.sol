@@ -11,7 +11,6 @@ contract MockStabilityPool {
     mapping(address => uint256) public deposits;
     mapping(address => uint256) public gains;
     bool public underCollateralizedTroves;
-    bool public burnGas;
 
     constructor(address musd_) {
         musd = MockMUSD(musd_);
@@ -19,11 +18,6 @@ contract MockStabilityPool {
 
     function setUnderCollateralizedTroves(bool v) external {
         underCollateralizedTroves = v;
-    }
-
-    /// @notice Makes withdrawFromSP spin until it runs out of gas.
-    function setBurnGas(bool v) external {
-        burnGas = v;
     }
 
     /// @notice Simulate a liquidation offset: the depositor loses MUSD and
@@ -42,9 +36,6 @@ contract MockStabilityPool {
     }
 
     function withdrawFromSP(uint256 amount) external {
-        if (burnGas) {
-            while (true) {}
-        }
         if (amount != 0) {
             require(
                 !underCollateralizedTroves,
