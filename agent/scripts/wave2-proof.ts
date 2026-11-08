@@ -131,6 +131,8 @@ async function main() {
         abi: factoryAbi,
         functionName: "createVault",
         args: [AGENT, parseEther(TRIGGER_ICR), parseEther(TARGET_ICR)],
+        // The testnet RPC once estimated 21,832 gas for this contract deployment. Gas is almost free, so set it.
+        gas: 8_000_000n,
       }),
     async () => {
       const now = (await pub.readContract({ address: FACTORY, abi: factoryAbi, functionName: "getVaults", args: [owner.address] })) as Address[];
