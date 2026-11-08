@@ -86,6 +86,10 @@ const agentWallet = agentAccount
   ? createWalletClient({ account: agentAccount, chain: mezo, transport: http(RPC) })
   : undefined;
 
+// The testnet RPC sometimes estimates ~21k gas for calls that need millions. Gas is almost free, so set it.
+const GAS = 8_000_000n;
+const RESUME = env.VAULT_ADDRESS as Address | undefined; // resume a half finished run on this vault
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const proof: { step: string; tx: Hash; url: string; note?: string }[] = [];
 
@@ -122,6 +126,11 @@ async function main() {
   console.log(`BTC price ${Number(price) / 1e18}`);
 
   // 1. vault
+  let vault: Address;
+  if (RESUME) {
+    vault = RESUME;
+    console.log(`Resuming on vault ${EXPLORER}/address/${vault}`);
+  } else {
   const before = (await pub.readContract({ address: FACTORY, abi: factoryAbi, functionName: "getVaults", args: [owner.address] })) as Address[];
   const vaults = await step(
     "create v2 vault",
@@ -132,15 +141,16 @@ async function main() {
         functionName: "createVault",
         args: [AGENT, parseEther(TRIGGER_ICR), parseEther(TARGET_ICR)],
         // The testnet RPC once estimated 21,832 gas for this contract deployment. Gas is almost free, so set it.
-        gas: 8_000_000n,
+        gas: GAS,
       }),
     async () => {
       const now = (await pub.readContract({ address: FACTORY, abi: factoryAbi, functionName: "getVaults", args: [owner.address] })) as Address[];
       return now.length > before.length ? now : undefined;
     },
   );
-  const vault = vaults[vaults.length - 1];
+  vault = vaults[vaults.length - 1];
   console.log(`  vault ${EXPLORER}/address/${vault}`);
+  }
 
   const health = async () => {
     const h = (await pub.readContract({ address: vault, abi: vaultAbi, functionName: "health" })) as readonly bigint[];
@@ -151,24 +161,25 @@ async function main() {
     return { pooled: e[0], gain: e[1], repayCap: e[6] };
   };
 
+  if (!RESUME) {
   // 2. loan at ~START_ICR (debt grows by Mezo's 200 MUSD gas compensation and fee)
   const totalDebt = parseEther(DEBT) + parseEther("230");
   const coll = (totalDebt * parseEther(String(START_ICR))) / price;
   await step(
     `open loan (${formatEther(coll)} BTC / ${DEBT} MUSD)`,
-    () => ownerWallet.writeContract({ address: vault, abi: vaultAbi, functionName: "openLoan", args: [parseEther(DEBT)], value: coll }),
+    () => ownerWallet.writeContract({ address: vault, abi: vaultAbi, functionName: "openLoan", args: [parseEther(DEBT)], value: coll, gas: GAS }),
     async () => ((await health()).status === 1 ? true : undefined),
   );
 
   // 3. safety funds
   await step(
     `fund BTC buffer (${BUFFER} BTC)`,
-    () => ownerWallet.sendTransaction({ to: vault, value: parseEther(BUFFER) }),
+    () => ownerWallet.sendTransaction({ to: vault, value: parseEther(BUFFER), gas: 200_000n }),
     async () => ((await health()).buffer > 0n ? true : undefined),
   );
   await step(
     "approve MUSD",
-    () => ownerWallet.writeContract({ address: CORE.MUSD as Address, abi: erc20Abi, functionName: "approve", args: [vault, parseEther(RESERVE)] }),
+    () => ownerWallet.writeContract({ address: CORE.MUSD as Address, abi: erc20Abi, functionName: "approve", args: [vault, parseEther(RESERVE)], gas: 500_000n }),
     async () => {
       const a = (await pub.readContract({ address: CORE.MUSD as Address, abi: erc20Abi, functionName: "allowance", args: [owner.address, vault] })) as bigint;
       return a >= parseEther(RESERVE) ? true : undefined;
@@ -176,7 +187,7 @@ async function main() {
   );
   await step(
     `fund MUSD reserve (${RESERVE})`,
-    () => ownerWallet.writeContract({ address: vault, abi: vaultAbi, functionName: "fundReserve", args: [parseEther(RESERVE)] }),
+    () => ownerWallet.writeContract({ address: vault, abi: vaultAbi, functionName: "fundReserve", args: [parseEther(RESERVE)], gas: GAS }),
     async () => ((await health()).reserve > 0n ? true : undefined),
   );
 
@@ -184,22 +195,40 @@ async function main() {
   const toPool = (parseEther(RESERVE) * BigInt(Math.round(EARN_SHARE * 100))) / 100n;
   await step(
     `earnDeposit ${formatEther(toPool)} MUSD into the Mezo Stability Pool`,
-    () => ownerWallet.writeContract({ address: vault, abi: vaultAbi, functionName: "earnDeposit", args: [toPool] }),
+    () => ownerWallet.writeContract({ address: vault, abi: vaultAbi, functionName: "earnDeposit", args: [toPool], gas: GAS }),
     async () => ((await earn()).pooled > 0n ? true : undefined),
     "Reserve now earns BTC from Mezo liquidations",
   );
+  }
 
   // 5. push ICR below the trigger by borrowing more
   const h = await health();
   const trigger = parseEther(TRIGGER_ICR);
   const targetDrop = (trigger * 95n) / 100n; // land 5% under the trigger
   const debtAtTarget = (h.coll * h.price) / targetDrop;
-  const borrow = debtAtTarget > h.debt ? debtAtTarget - h.debt : parseEther("100");
-  await step(
-    `borrow ${formatEther(borrow).slice(0, 8)} MUSD more (ICR drops below ${Number(TRIGGER_ICR) * 100}%)`,
-    () => ownerWallet.writeContract({ address: vault, abi: vaultAbi, functionName: "borrowMore", args: [borrow] }),
-    async () => ((await health()).debt > h.debt ? true : undefined),
-  );
+  const debtNeeded = (h.coll * h.price) / trigger; // debt at which ICR equals the trigger
+  let borrow = debtAtTarget > h.debt ? debtAtTarget - h.debt : parseEther("100");
+  if (h.icr < trigger) {
+    console.log(`ICR is already ${(Number(h.icr) / 1e16).toFixed(1)}%, below the trigger. No more borrowing needed.`);
+  } else {
+    // Mezo caps borrowing (maxBorrowingCapacity). Back off in 5% steps but stay under the trigger.
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      if (h.debt + borrow <= debtNeeded) throw new Error("Mezo's borrowing cap leaves the ICR above the trigger. Use a lower TRIGGER_ICR.");
+      try {
+        await step(
+          `borrow ${formatEther(borrow).slice(0, 8)} MUSD more (ICR drops below ${Number(TRIGGER_ICR) * 100}%)`,
+          () => ownerWallet.writeContract({ address: vault, abi: vaultAbi, functionName: "borrowMore", args: [borrow], gas: GAS }),
+          async () => ((await health()).debt > h.debt ? true : undefined),
+        );
+        break;
+      } catch (error) {
+        const msg = String((error as Error).message ?? error);
+        if (!/maxBorrowingCapacity|ICR < MCR/i.test(msg)) throw error;
+        console.log("  Mezo refused that amount, trying 5% less");
+        borrow = (borrow * 95n) / 100n;
+      }
+    }
+  }
   const stressed = await health();
   const pooledBefore = (await earn()).pooled;
   console.log(`  ICR now ${(Number(stressed.icr) / 1e16).toFixed(1)}%  pooled ${formatEther(pooledBefore)} MUSD`);
