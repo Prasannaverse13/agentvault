@@ -72,13 +72,13 @@ const FACTORY = deployment.factory as Address;
 const AGENT = (env.AGENT_ADDRESS ?? agentAccount?.address ?? deployment.agent) as Address;
 if (!AGENT) throw new Error("Set AGENT_ADDRESS or AGENT_PRIVATE_KEY so the vault has an agent.");
 
-const DEBT = env.DEBT ?? "2300"; // > 1800 min net debt, leaves room for a capped repay
-const START_ICR = Number(env.START_ICR ?? "2.0");
-const BUFFER = env.BUFFER ?? "0.004";
+const DEBT = env.DEBT ?? "1800"; // > 1800 min net debt, leaves room for a capped repay
+const START_ICR = Number(env.START_ICR ?? "1.45");
+const BUFFER = env.BUFFER ?? "0.0005"; // small, so the rescue must unwind the pool
 const RESERVE = env.RESERVE ?? "600";
 const EARN_SHARE = Number(env.EARN_SHARE ?? "0.7");
-const TRIGGER_ICR = env.TRIGGER_ICR ?? "1.6";
-const TARGET_ICR = env.TARGET_ICR ?? "1.9";
+const TRIGGER_ICR = env.TRIGGER_ICR ?? "1.25";
+const TARGET_ICR = env.TARGET_ICR ?? "1.40";
 
 const pub = createPublicClient({ chain: mezo, transport: http(RPC) });
 const ownerWallet = createWalletClient({ account: owner, chain: mezo, transport: http(RPC) });

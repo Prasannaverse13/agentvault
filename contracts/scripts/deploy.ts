@@ -50,9 +50,16 @@ async function main() {
     fees: { protectFeeBps: FEES.PROTECT_FEE_BPS, performanceFeeBps: FEES.PERFORMANCE_FEE_BPS, recipient: feeRecipient },
     core: CORE,
     explorer: "https://explorer.test.mezo.org",
-    wave1: previous.factory && previous.factory !== address
-      ? { factory: previous.factory, demoVault: previous.demoVault }
-      : previous.wave1,
+    // A v1 file becomes wave1. A v2 file keeps its wave1 and is kept as an earlier v2 build.
+    wave1: previous.version === "2.0.0"
+      ? previous.wave1
+      : previous.factory && previous.factory !== address
+        ? { factory: previous.factory, demoVault: previous.demoVault }
+        : previous.wave1,
+    earlierV2: previous.version === "2.0.0" && previous.factory !== address
+      ? [...(previous.earlierV2 ?? []), { factory: previous.factory, evm: previous.evm ?? "cancun", deployedAt: previous.deployedAt }]
+      : previous.earlierV2,
+    evm: "london",
     deployer: deployer.address,
     deployedAt: new Date().toISOString(),
   };
