@@ -204,7 +204,7 @@ async function main() {
   // 5. push ICR below the trigger by borrowing more
   const h = await health();
   const trigger = parseEther(TRIGGER_ICR);
-  const targetDrop = (trigger * 95n) / 100n; // land 5% under the trigger
+  const targetDrop = (trigger * 98n) / 100n; // land just under the trigger, so a testnet redemption has little time to hit it
   const debtAtTarget = (h.coll * h.price) / targetDrop;
   const debtNeeded = (h.coll * h.price) / trigger; // debt at which ICR equals the trigger
   let borrow = debtAtTarget > h.debt ? debtAtTarget - h.debt : parseEther("100");
@@ -230,13 +230,14 @@ async function main() {
     }
   }
   const stressed = await health();
+  if (stressed.status !== 1 || stressed.debt === 0n) throw new Error(`Trove is not active (status ${stressed.status}). A redemption may have closed it. Start a fresh vault.`);
   const pooledBefore = (await earn()).pooled;
   console.log(`  ICR now ${(Number(stressed.icr) / 1e16).toFixed(1)}%  pooled ${formatEther(pooledBefore)} MUSD`);
 
   // 6. agent rescue (the live agent should act within ~20 s once it watches this vault)
   console.log(`\nAdd this vault to the agent (AGENT_VAULTS=${vault}) or open it in the app. Waiting for protect()...`);
   let rescued = false;
-  for (let i = 0; i < 40 && !rescued; i += 1) {
+  for (let i = 0; i < 4 && !rescued; i += 1) {
     await sleep(3000);
     const now = await health();
     rescued = now.icr > stressed.icr;
