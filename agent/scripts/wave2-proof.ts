@@ -237,11 +237,7 @@ async function main() {
   // 6. agent rescue (the live agent should act within ~20 s once it watches this vault)
   console.log(`\nAdd this vault to the agent (AGENT_VAULTS=${vault}) or open it in the app. Waiting for protect()...`);
   let rescued = false;
-  for (let i = 0; i < 4 && !rescued; i += 1) {
-    await sleep(3000);
-    const now = await health();
-    rescued = now.icr > stressed.icr;
-  }
+  // A price move changes ICR by itself, so ICR is not proof of a rescue. Only a debt drop is.
   if (!rescued && agentWallet) {
     console.log("No agent acted yet. Signing protect() with AGENT_PRIVATE_KEY using the same rules engine.");
     const s = await health();
