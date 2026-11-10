@@ -7,10 +7,10 @@ Wave 2 deadline on AKINDO: **Nov 13, 11:00**. Copy these answers into the AKINDO
 | Item | Status |
 |---|---|
 | Judge feedback addressed (Stability Pool reserve, claimCollateral, min debt cap, verify, deck, revenue) | Done in code, 23 contract tests + 20 end-to-end checks passing |
-| Deploy v2 factory on Mezo testnet | Done: [0x2a8Bfbd24D5E2864abd1D97d9067a343903C0dB0](https://explorer.test.mezo.org/address/0x2a8Bfbd24D5E2864abd1D97d9067a343903C0dB0) |
-| Verify factory on explorer.test.mezo.org | TODO: the API verify failed, use the explorer page with Standard JSON Input |
+| Deploy v2 factory on Mezo testnet | Done: [0xe211B90736A3995e4C57f560724C265d5C60C538](https://explorer.test.mezo.org/address/0xe211B90736A3995e4C57f560724C265d5C60C538) (built for the london EVM so the explorer can read it) |
+| Verify factory on explorer.test.mezo.org | Not done: every method fails with Unable to verify although the deployed bytecode matches the local build byte for byte. Do not claim verified. |
 | Wave 2 proof transactions | Done, see Proof on Mezo testnet below |
-| Verify the demo vault | TODO `VAULTS=<vault> pnpm contracts:verify` |
+| Verify the demo vault | Not done, same explorer problem |
 | Update Render env (`FACTORY_ADDRESS`, `NEXT_PUBLIC_FACTORY_ADDRESS`, `AGENT_VAULTS`) and redeploy | TODO |
 | Push to GitHub (repo must stay public) | Done on branch `wave2`, merge into main before submitting |
 | Pitch deck | Linked on AKINDO |
@@ -37,11 +37,11 @@ Also: agent writes carry a gas margin because Mezo's trove list search costs 6M+
 Tests: 23 contract tests (8 in Wave 1), 20 end-to-end checks on a live local chain with the real agent, all passing.
 
 Proof on Mezo testnet:
-Factory v2: https://explorer.test.mezo.org/address/0x2a8Bfbd24D5E2864abd1D97d9067a343903C0dB0
-Demo vault: https://explorer.test.mezo.org/address/0x80857B7A0BA8D77cFc0F0c3197F6D4c8F72C58f1
-420 MUSD into the Stability Pool: https://explorer.test.mezo.org/tx/0xb0d3d2007e8652d4290498dde9cbb794bedab5d2b1d32e2a85c7691df8af13f1
-Rescue from buffer and liquid MUSD, ICR 118.7% to 139.9%: https://explorer.test.mezo.org/tx/0xaf152f1a7b504268c6b11f9cd9e512518889b9dd6f26c38e9f103d6d1bb51fb3
-Rescue that unwinds the pool, ICR 122.8% to 140.0%, pool 420 to 111.9 MUSD: https://explorer.test.mezo.org/tx/0x6187a2831624ccc2804d6b2146da0cd3f095568d7fac82b5940876b13e4cc0c0
+Factory v2: https://explorer.test.mezo.org/address/0xe211B90736A3995e4C57f560724C265d5C60C538
+Demo vault: https://explorer.test.mezo.org/address/0x17f31926284BB7e36b272eCdd250fBfD3059366E
+420 MUSD into the Stability Pool: https://explorer.test.mezo.org/tx/0x1dd44969f5b5955c464312fe9c61ec99b4e61793cf59055ea340b0270484b89f
+Owner borrows more, ICR drops to 118.7%: https://explorer.test.mezo.org/tx/0x4fea2ac39bb9d86db01e271bff1d67ffc2e1cdc0545c5bc7a1b511ce077f1355
+Agent rescue that unwinds the pool, ICR 118.9% to 140.0%, pool 420 to 249.6 MUSD: https://explorer.test.mezo.org/tx/0x3b9d40dd6d96248b563fce7a0d1d8ab3aca7668dbe347f33d2061a9cc4b0d389
 Live app: https://agentvault-90fz.onrender.com/
 Code: https://github.com/Prasannaverse13/agentvault
 Video: <NEW VIDEO LINK>
@@ -92,11 +92,11 @@ Wave 2 (fill from `contracts/deployments/31611.json` and `wave2-proof.json`):
 
 | What | Link |
 |---|---|
-| v2 factory (verified) | |
-| v2 demo vault (verified) | |
-| Stability Pool deposit (earnDeposit) | |
-| Stress: owner borrows more | |
-| Agent protect() that unwinds the pool | |
+| v2 factory | https://explorer.test.mezo.org/address/0xe211B90736A3995e4C57f560724C265d5C60C538 |
+| v2 demo vault | https://explorer.test.mezo.org/address/0x17f31926284BB7e36b272eCdd250fBfD3059366E |
+| Stability Pool deposit (earnDeposit) | https://explorer.test.mezo.org/tx/0x1dd44969f5b5955c464312fe9c61ec99b4e61793cf59055ea340b0270484b89f |
+| Stress: owner borrows more | https://explorer.test.mezo.org/tx/0x4fea2ac39bb9d86db01e271bff1d67ffc2e1cdc0545c5bc7a1b511ce077f1355 |
+| Agent protect() that unwinds the pool | https://explorer.test.mezo.org/tx/0x3b9d40dd6d96248b563fce7a0d1d8ab3aca7668dbe347f33d2061a9cc4b0d389 |
 
 Wave 1:
 - Factory: 0x0Eb2cD465946e7eac309bCF311Dbd2Dd5cc7C31d
@@ -115,7 +115,7 @@ the deposit, unwind-on-rescue and capped repay are proven on testnet.
 
 0:00 to 0:12 Hook. "In Wave 1 AgentVault saved loans. In Wave 2 the safety money earns while it waits."
 0:12 to 0:35 Earn card. Reserve split: 70% in the Mezo Stability Pool, 30% liquid. BTC earned from liquidations goes straight into the loan.
-0:35 to 1:05 Live rescue. Borrow more, ICR drops under the trigger, the agent unwinds the pool and repays. Show the tx on the explorer and the verified contract.
+0:35 to 1:05 Live rescue. Borrow more, ICR drops under the trigger, the agent unwinds the pool and repays. Show the tx on the explorer.
 1:05 to 1:25 Safety. Repay cap at Mezo's minimum debt. Redemption surplus claimed for the owner. Agent can never withdraw.
 1:25 to 1:45 Business. 0.5% per rescue, 10% of pool gains, capped on-chain. More deposits in Mezo's Stability Pool, fewer liquidations.
-1:45 to 2:00 Close. 23 tests, verified contracts, links.
+1:45 to 2:00 Close. 23 tests, real testnet txs, links.
