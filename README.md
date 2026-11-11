@@ -17,13 +17,29 @@ straight into the loan as extra collateral. See [What changed since Wave 1](#wha
 
 Built for the **Mezo Buildathon (Track 1: DeFi, with Track 2 Telegram access)**.
 
+### Wave 2 at a glance
+
+> **A real agent rescue on Mezo testnet that pulled MUSD back out of the Mezo Stability Pool to save the loan.**
+> ICR **118.9% → 140.0%**, Stability Pool deposit **420 → 249.6 MUSD**, one `protect()` call by the agent:
+> [`0x3b9d40dd…c0d389`](https://explorer.test.mezo.org/tx/0x3b9d40dd6d96248b563fce7a0d1d8ab3aca7668dbe347f33d2061a9cc4b0d389)
+
+| | Wave 1 | Wave 2 |
+|---|---|---|
+| MUSD reserve | Sat idle in the vault | **Earns BTC in the Mezo Stability Pool**, unwound by the agent on a rescue |
+| Mezo primitives used | Trove, PriceFeed | Trove, PriceFeed, **StabilityPool**, **claimCollateral**, **minNetDebt** |
+| Redemption | Surplus BTC could get stuck | **`claimSurplus()`** recovers it to the owner, the agent calls it automatically |
+| Rescue near min debt | Could revert | **`maxRepay()`** clamps on-chain and in the rules engine |
+| Business model | None | **0.5% per rescue, 10% of pool gains**, hard capped in the contract |
+| Contract tests | 8 | **23** (plus 20 end-to-end checks) |
+| Testnet proof | Two rescues from the buffer and reserve | **Rescue that unwinds the Stability Pool** on a fresh v2 factory |
+
 | | |
 |---|---|
 | Live app | **https://agentvault-90fz.onrender.com** (Mezo testnet; the free host sleeps when idle, so the first load can take about a minute) |
 | Chain | Mezo testnet, chain id `31611` (plus a local demo network, chain id `31337`) |
 | MUSD integration | Real Mezo trove via `BorrowerOperations` and `TroveManager`; MUSD reserve earns in the Mezo `StabilityPool` and repays debt; `claimCollateral` recovers redemption surplus |
-| Live contracts | Wave 2 factory: see [`contracts/deployments/31611.json`](contracts/deployments/31611.json). Wave 1 factory `0x0Eb2cD465946e7eac309bCF311Dbd2Dd5cc7C31d`, demo vault `0xAbb30839FE657D59b4CBCbB737f4af896c5a8b62` |
-| Proof | Two agent `protect()` transactions on testnet, see [Live proof](#live-proof-on-mezo-testnet) |
+| Live contracts | Wave 2 factory [`0xe211B90736A3995e4C57f560724C265d5C60C538`](https://explorer.test.mezo.org/address/0xe211B90736A3995e4C57f560724C265d5C60C538), demo vault [`0x17f31926284BB7e36b272eCdd250fBfD3059366E`](https://explorer.test.mezo.org/address/0x17f31926284BB7e36b272eCdd250fBfD3059366E). Full record in [`contracts/deployments/31611.json`](contracts/deployments/31611.json). Wave 1 factory `0x0Eb2cD465946e7eac309bCF311Dbd2Dd5cc7C31d` still works |
+| Proof | Wave 2 Stability Pool rescue plus the two Wave 1 rescues, see [Live proof](#live-proof-on-mezo-testnet) |
 | Stack | Solidity (Hardhat), TypeScript, Fastify, viem, Next.js 15, Tailwind, three.js, grammY |
 
 ---
@@ -37,7 +53,7 @@ Every item below answers a point from the Wave 1 judge review.
 | Give the idle MUSD reserve a sound productive use the agent can unwind | **Earn:** the reserve is deposited into the Mezo **Stability Pool** (`provideToSP`). It earns the BTC of liquidated troves. `protect()` unwinds just the missing MUSD (`withdrawFromSP`) before repaying. `harvest()` adds the BTC gains to the trove as collateral. The agent keeps 30% liquid and pools the rest by itself | `AgentVault.earnDeposit / earnWithdraw / harvest / protect`, agent `monitor.ts` |
 | Add a `claimCollateral` passthrough so a redeemed vault keeps its surplus BTC (High finding) | **`claimSurplus()`** calls Mezo `BorrowerOperations.claimCollateral()` and sends the BTC to the owner. The agent calls it automatically after a redemption | `AgentVault.claimSurplus`, agent housekeeping |
 | Cap repayments at the 1800 MUSD minimum net debt so `protect()` does not revert | **`maxRepay()`** = debt − 200 MUSD gas compensation − `minNetDebt`. `protect()` clamps to it on-chain and the shared rules engine never asks for more | `AgentVault.maxRepay`, `shared/src/rules.ts` |
-| Verify the factory and vault on the Mezo explorer | `pnpm contracts:verify` verifies both through the Mezo Blockscout API (same endpoint Mezo uses for MUSD) | `contracts/scripts/verify.ts` |
+| Verify the factory and vault on the Mezo explorer | Tried every route: the Hardhat plugin, the Blockscout v2 standard JSON API and flattened source. We rebuilt for the `london` EVM because the Mezo verifier offers nothing newer, and the deployed bytecode matches our build byte for byte, but the explorer still answers *Unable to verify*. **Not verified yet.** The exact compiler input is committed so anyone can reproduce the bytecode | `contracts/verify/`, `contracts/scripts/verify.ts` |
 | A stated revenue model would lift the product score | **Fees, fixed at deploy and hard capped in the contract:** 0.5% of each rescue (cap 1%) and 10% of Stability Pool BTC gains (cap 20%). A failed fee transfer never blocks a rescue | `AgentVault._payFee`, [Revenue model](#revenue-model) |
 | Add a pitch deck | Deck linked from the AKINDO page | [SUBMISSION.md](SUBMISSION.md) |
 
@@ -49,6 +65,18 @@ Also new in Wave 2:
 - The dashboard has an **Earn** card (pooled vs liquid reserve, BTC earned, harvest, repay limit, fees, redemption alert with a claim button). The chat explains Earn and fees.
 - Tests: 8 → **23** contract tests, new rules tests, end-to-end checks 14 → **20** (all passing). See [Testing](#11-testing).
 - Wave 1 vaults keep working: `health()` is unchanged and the agent and dashboard detect v2 features with `earnInfo()`.
+
+### What live testnet taught us (and what we fixed)
+
+Running the Wave 2 flow on real Mezo testnet surfaced problems the mocks never show:
+
+| Found on testnet | Fix |
+|---|---|
+| A rescue ran out of gas at 7.9M of 8.07M. Cause: Mezo's `repayMUSD` and `addColl` with empty hints walk the sorted trove list, which costs 6M+ gas | The agent sends every write with a 60% gas margin on top of the estimate, and the proof scripts set explicit limits |
+| The testnet RPC sometimes estimates about 21k gas for a call that needs millions, which the node then rejects | Explicit gas limits on every owner and agent write in the scripts |
+| A demo trove we pushed to 119% was **closed by someone's redemption** before the agent ran: Mezo redeems the lowest ICR troves first | This is exactly the case `claimSurplus()` exists for. The proof script now stops just under the trigger, rescues at once, and refuses to act on a closed trove |
+| The Mezo explorer verifier lists no EVM version newer than `london` | Contracts are now compiled for `london` |
+| A price move changes ICR by itself, so an ICR rise is not proof of a rescue | Every confirmation checks a debt drop or a balance change, never ICR alone |
 
 ## Revenue model
 
@@ -503,13 +531,14 @@ activity tab data*. Demo data lives in `data-demo/` and never touches testnet da
    (it needs gas to send `protect()`).
 2. **Configure:** `cp .env.example .env`, then set `PRIVATE_KEY` and `AGENT_PRIVATE_KEY`
    (optionally Telegram and OpenAI keys).
-3. **Deploy and verify the v2 factory, then produce the Wave 2 proof:**
+3. **Deploy the v2 factory, then produce the Wave 2 proof:**
    ```bash
    pnpm contracts:deploy      # v2 factory with the Mezo Stability Pool and fees
-   pnpm contracts:verify      # verifies it on explorer.test.mezo.org
+   pnpm contracts:verify      # submits it to explorer.test.mezo.org (see the note on verification)
    # put FACTORY_ADDRESS and NEXT_PUBLIC_FACTORY_ADDRESS in .env
    pnpm demo:wave2            # v2 vault, loan, Stability Pool deposit, stress, agent rescue
-   VAULTS=<vault> pnpm contracts:verify   # verify the demo vault too
+   # resume a half finished run on an existing vault:
+   VAULT_ADDRESS=<vault> pnpm demo:wave2
    ```
 4. **Run the agent and the web app:**
    ```bash
@@ -543,6 +572,8 @@ the free instance restarts; vault state lives on-chain.
 | `pnpm demo` | Whole product on the local demo network |
 | `pnpm demo:setup` | Testnet: create or reuse a vault, open the loan, fund buffer and reserve |
 | `pnpm demo:stress` | Testnet: owner borrows more so ICR falls below the trigger, then waits for the agent |
+| `pnpm demo:wave2` | Testnet: Wave 2 proof. v2 vault, loan, Stability Pool deposit, stress, agent rescue that unwinds the pool. Resumable with `VAULT_ADDRESS` |
+| `node agent/scripts/diag-vault.mjs` | Testnet, read only: print a vault's live health |
 | `pnpm demo:fund` | Testnet: top up the agent wallet's gas |
 | `pnpm demo:transfer` | Testnet: send BTC between the project wallets |
 | `pnpm contracts:test` | Contract unit tests |
@@ -644,10 +675,13 @@ create vault, open loan, fund, crash, agent protects, withdraw, close, reopen, m
 
 ## 13. Known limitations
 
-- **Testnet coverage:** the agent's `protect()` path is proven on Mezo testnet (below). The newer
-  owner flows (withdraw, close loan, reopen loan, multi-vault) and the dashboard features around
-  them were exercised on the demo network with mock Mezo contracts, **not** on live Mezo testnet,
-  because of limited faucet funds. Real Mezo adds interest, fees, gas compensation and a higher
+- **Testnet coverage:** on Mezo testnet we proved the agent rescue from the buffer and reserve
+  (Wave 1) and the rescue that unwinds the Stability Pool (Wave 2). Harvesting pool gains needs a
+  real liquidation in the pool, and withdraw, close loan, reopen and multi-vault were exercised on
+  the demo network with mock Mezo contracts, **not** on live testnet, because of limited faucet
+  funds.
+- **Explorer verification:** the contracts are not verified on the Mezo explorer yet, see
+  [What changed since Wave 1](#what-changed-since-wave-1). Real Mezo adds interest, fees, gas compensation and a higher
   minimum debt that the mocks simplify.
 - **Mock liquidation:** the demo network does not liquidate. It proves the agent saves the loan;
   the "without the agent it would be liquidated" comparison comes from the simulator.
@@ -660,6 +694,27 @@ create vault, open loan, fund, crash, agent protects, withdraw, close, reopen, m
 ---
 
 ## Live proof on Mezo testnet
+
+### Wave 2: the agent unwinds the Stability Pool to save the loan
+
+Factory v2 [`0xe211B90736A3995e4C57f560724C265d5C60C538`](https://explorer.test.mezo.org/address/0xe211B90736A3995e4C57f560724C265d5C60C538), vault [`0x17f31926284BB7e36b272eCdd250fBfD3059366E`](https://explorer.test.mezo.org/address/0x17f31926284BB7e36b272eCdd250fBfD3059366E),
+agent `0xe01b65A9705A306f70080964617A3EBE2f63FC12`, trigger 125%, target 140%. Produced by
+`pnpm demo:wave2` and recorded in [`contracts/deployments/wave2-proof.json`](contracts/deployments/wave2-proof.json).
+
+| # | Step | Result | Tx |
+|---|---|---|---|
+| 1 | Owner creates a v2 vault | Vault live, agent authorised | [`0xae322a86…f81d3`](https://explorer.test.mezo.org/tx/0xae322a8612a864da01d1e688af7200bdeb92bcdd743217848a8ef6ab268f81d3) |
+| 2 | Owner opens the loan | 0.0403 BTC collateral, 1800 MUSD | [`0x4f1469a5…05e06`](https://explorer.test.mezo.org/tx/0x4f1469a52130e3e3bdf9553c7e0b2daae006ed66443b8bb8368217984fb05e06) |
+| 3 | Owner funds the BTC buffer | 0.0005 BTC (kept small on purpose) | [`0xe885c448…f44b9`](https://explorer.test.mezo.org/tx/0xe885c448a3e74df18b4d4c7d3d81930c4c538e83000c7b647779039ee8af44b9) |
+| 4 | Owner funds the MUSD reserve | 600 MUSD | [`0x8b4c372b…e2d06`](https://explorer.test.mezo.org/tx/0x8b4c372b693e175e5546bd32e11d06d44f6d0db6efed81735fd4e1872f6e2d06) |
+| 5 | `earnDeposit` into the Mezo Stability Pool | 420 MUSD earning, 180 liquid | [`0x1dd44969…4b89f`](https://explorer.test.mezo.org/tx/0x1dd44969f5b5955c464312fe9c61ec99b4e61793cf59055ea340b0270484b89f) |
+| 6 | Stress: owner borrows 475 MUSD more | ICR drops to 118.9%, under the 125% trigger | [`0x4fea2ac3…f1355`](https://explorer.test.mezo.org/tx/0x4fea2ac39bb9d86db01e271bff1d67ffc2e1cdc0545c5bc7a1b511ce077f1355) |
+| 7 | **Agent `protect()`** | **ICR 118.9% → 140.0%, pool 420 → 249.6 MUSD** (about 170 MUSD pulled back out to repay) | [`0x3b9d40dd…c0d389`](https://explorer.test.mezo.org/tx/0x3b9d40dd6d96248b563fce7a0d1d8ab3aca7668dbe347f33d2061a9cc4b0d389) |
+
+The liquid reserve and the tiny buffer could not restore the target alone, so the vault withdrew
+the missing MUSD from the Stability Pool and repaid in the same transaction.
+
+### Wave 1: rescues from the buffer and reserve
 
 Deployed contracts:
 
@@ -701,9 +756,9 @@ after agent action  ICR 179.93%  coll 0.04500 BTC  debt 2087.14 MUSD  buffer 0.0
 |---|---|
 | Mezo Integration (30%) | The vault is a real Mezo borrower: opens, defends, adjusts and closes a trove through `BorrowerOperations`, reads `TroveManager` and `PriceFeed`. Wave 2 composes three more Mezo primitives: the `StabilityPool` (deposit, unwind, gains), `claimCollateral` for redemption surplus, and `minNetDebt` with gas compensation for safe repays |
 | Product and Business Viability (30%) | Extends Mezo Borrow with automatic liquidation defence, and turns the safety reserve into Stability Pool liquidity that backs Mezo's own liquidation engine. Revenue: 0.5% per rescue, 10% of pool gains, capped on-chain |
-| Technical Implementation (20%) | Isolated per-user contracts with on-chain bounds, deterministic shared rules engine, unit and end-to-end tests, state-based confirmation for an unreliable RPC, documented threat model |
+| Technical Implementation (20%) | Isolated per-user contracts with on-chain bounds, deterministic shared rules engine, 23 contract tests and 20 end-to-end checks, gas handling learned from live Mezo testnet (hintless trove list, flaky estimates), state-based confirmation, documented threat model |
 | User Experience (10%) | Guided setup checklist, plain-language chat, risk insight, live chart, toasts and Telegram alerts, mobile-friendly |
-| Submission Materials (10%) | This README, [SUBMISSION.md](SUBMISSION.md) with form answers, script and deck outline |
+| Submission Materials (10%) | This README, [SUBMISSION.md](SUBMISSION.md), a pitch deck, and a launch video that shows the full Wave 2 workflow and the testnet proof |
 
 Track 1 (DeFi): borrowing automation on top of Mezo's trove. Track 2 (Access): Telegram bot,
 plain-language chat and alerts.
@@ -729,11 +784,13 @@ agentvault/
 ├── contracts/            Solidity + Hardhat
 │   ├── contracts/        AgentVault, AgentVaultFactory, interfaces, mocks
 │   ├── scripts/          deploy.ts (testnet), deploy-local.ts (demo network), verify.ts
+│   ├── deployments/      31611.json (live addresses), wave2-proof.json (testnet proof)
+│   ├── verify/           exact compiler input for explorer verification
 │   └── test/             AgentVault.test.ts
 ├── agent/                Agent service
 │   ├── src/              server, monitor, rules, chain, chat, simulator, risk,
 │   │                     history, store, watchlist, telegram, demo
-│   └── scripts/          setup-demo, stress-demo, wave2-proof, fund-agent, transfer, e2e-local
+│   └── scripts/          setup-demo, stress-demo, wave2-proof, wave2-unwind, diag-*, fund-agent, e2e-local
 ├── web/                  Next.js dashboard
 │   ├── app/              layout, global styles
 │   ├── components/       Landing, Dashboard, Header, CreateVault, Simulator,

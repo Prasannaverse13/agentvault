@@ -1,0 +1,19 @@
+{
+  "network": "Mezo Testnet",
+  "factory": "0xe211B90736A3995e4C57f560724C265d5C60C538",
+  "vault": "0x17f31926284BB7e36b272eCdd250fBfD3059366E",
+  "agent": "0xe01b65A9705A306f70080964617A3EBE2f63FC12",
+  "icrBefore": 118.85403933257174,
+  "icrAfter": 139.9550411273452,
+  "pooledBefore": "420",
+  "pooledAfter": "249.63419382262098455",
+  "steps": [
+    {
+      "step": "agent protect() (unwinds Stability Pool MUSD to repay)",
+      "tx": "0x3b9d40dd6d96248b563fce7a0d1d8ab3aca7668dbe347f33d2061a9cc4b0d389",
+      "url": "https://explorer.test.mezo.org/tx/0x3b9d40dd6d96248b563fce7a0d1d8ab3aca7668dbe347f33d2061a9cc4b0d389",
+      "note": "ICR 118.8% fell below 125.0%; restore toward 140.0% (unwinding Stability Pool MUSD)"
+    }
+  ],
+  "at": "2026-11-10T17:19:47.251Z"
+}
