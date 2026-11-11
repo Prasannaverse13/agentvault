@@ -11,10 +11,10 @@ Wave 2 deadline on AKINDO: **Nov 13, 11:00**. Copy these answers into the AKINDO
 | Verify factory on explorer.test.mezo.org | Not done: every method fails with Unable to verify although the deployed bytecode matches the local build byte for byte. Do not claim verified. |
 | Wave 2 proof transactions | Done, see Proof on Mezo testnet below |
 | Verify the demo vault | Not done, same explorer problem |
-| Update Render env (`FACTORY_ADDRESS`, `NEXT_PUBLIC_FACTORY_ADDRESS`, `AGENT_VAULTS`) and redeploy | TODO |
-| Push to GitHub (repo must stay public) | Done on branch `wave2`, merge into main before submitting |
+| Update Render env (`FACTORY_ADDRESS`, `NEXT_PUBLIC_FACTORY_ADDRESS`, `AGENT_VAULTS`) and redeploy | Done |
+| Push to GitHub (repo must stay public) | Done, merged into main |
 | Pitch deck | Linked on AKINDO |
-| New 2 minute video (what changed) | TODO |
+| Launch video | Done: https://youtu.be/vibWPnAekEE |
 | Team info with X or LinkedIn | TODO |
 
 ## Updates in this Wave (AKINDO box, under 3000 characters)
@@ -44,7 +44,7 @@ Owner borrows more, ICR drops to 118.7%: https://explorer.test.mezo.org/tx/0x4fe
 Agent rescue that unwinds the pool, ICR 118.9% to 140.0%, pool 420 to 249.6 MUSD: https://explorer.test.mezo.org/tx/0x3b9d40dd6d96248b563fce7a0d1d8ab3aca7668dbe347f33d2061a9cc4b0d389
 Live app: https://agentvault-90fz.onrender.com/
 Code: https://github.com/Prasannaverse13/agentvault
-Video: <NEW VIDEO LINK>
+Video: https://youtu.be/vibWPnAekEE
 Deck: <DECK LINK>
 ```
 

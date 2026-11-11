@@ -35,6 +35,7 @@ Built for the **Mezo Buildathon (Track 1: DeFi, with Track 2 Telegram access)**.
 
 | | |
 |---|---|
+| Launch video | **https://youtu.be/vibWPnAekEE** (Wave 2 workflow and testnet proof) |
 | Live app | **https://agentvault-90fz.onrender.com** (Mezo testnet; the free host sleeps when idle, so the first load can take about a minute) |
 | Chain | Mezo testnet, chain id `31611` (plus a local demo network, chain id `31337`) |
 | MUSD integration | Real Mezo trove via `BorrowerOperations` and `TroveManager`; MUSD reserve earns in the Mezo `StabilityPool` and repays debt; `claimCollateral` recovers redemption surplus |
