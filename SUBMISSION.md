@@ -30,7 +30,7 @@ Wave 2 answers every point from the Wave 1 review.
 
 4. Revenue model. 0.5% of each rescue and 10% of Stability Pool gains, to a treasury fixed at deploy. Hard caps in the contract (1% and 20%). A failing fee transfer never blocks a rescue.
 
-5. A pitch deck, and contract verification on the Mezo explorer.
+5. A pitch deck and a launch video. Explorer verification: we rebuilt for the london EVM and the deployed bytecode matches our build byte for byte, but Mezo's verifier still answers Unable to verify, so the contracts are not verified yet.
 
 Also: agent writes carry a gas margin because Mezo's trove list search costs 6M+ gas on testnet (found when a live rescue ran out of gas), closeLoan() unwinds the pool to pay the debt, the agent serializes its transactions (fixed a nonce race), a new Earn card in the dashboard, the chat explains Earn and fees. Wave 1 vaults keep working.
 
@@ -45,7 +45,6 @@ Agent rescue that unwinds the pool, ICR 118.9% to 140.0%, pool 420 to 249.6 MUSD
 Live app: https://agentvault-90fz.onrender.com/
 Code: https://github.com/Prasannaverse13/agentvault
 Video: https://youtu.be/vibWPnAekEE
-Deck: <DECK LINK>
 ```
 
 ## Milestones
