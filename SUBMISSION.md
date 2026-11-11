@@ -20,7 +20,7 @@ Wave 2 deadline on AKINDO: **Nov 13, 11:00**. Copy these answers into the AKINDO
 ## Updates in this Wave (AKINDO box, under 3000 characters)
 
 ```
-Wave 2 answers every point from the Wave 1 review.
+Wave 2 answers every point from the Wave 1 review, and delivers our declared Wave 2 goals: the idle MUSD reserve now earns and compounds into the loan, and one owner can run many vaults. The on-chain rules registry moves to Wave 3.
 
 1. The MUSD reserve now earns. Idle reserve goes into the Mezo Stability Pool (provideToSP) and earns BTC from liquidations. When the loan is in danger, protect() pulls just the missing MUSD back out (withdrawFromSP) and repays. harvest() adds the BTC gains to the trove as collateral, so the loan protects itself with its own yield. The agent keeps 30% liquid and pools the rest by itself. Mezo blocks pool withdrawals while any trove is under 110%; protect() catches that and falls back to the liquid reserve and BTC buffer instead of reverting.
 
